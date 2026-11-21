@@ -881,7 +881,8 @@ function renderPlayers() {
     const a = document.createElement('span');
     a.className = 'player-acc';
     const v = color === 'w' ? acc.white : acc.black;
-    a.textContent = v !== null && v !== undefined ? `%${v.toFixed(1)} doğruluk` : '';
+    a.textContent = v !== null && v !== undefined ? `%${v.toFixed(1)}` : '';
+    a.title = 'Doğruluk';
     el.append(sw, name, a);
   };
   fill(playerTopEl, boardFlipped ? 'w' : 'b');

@@ -79,7 +79,7 @@ button { cursor: pointer; }
 .btn-primary:disabled { background: #283049; color: #5F6A83; cursor: not-allowed; }
 .btn-ghost { background: transparent; border-color: var(--line-strong); color: var(--text-primary); }
 .btn-ghost:hover { border-color: var(--accent); }
-.btn-sm { padding: 8px 14px; font-size: 14px; }
+.btn-sm { padding: 8px 14px; font-size: 14px; white-space: nowrap; flex: none; }
 
 /* =========================================================
    GİRİŞ EKRANI
@@ -283,7 +283,7 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 }
 .player-bar .swatch { margin-right: 2px; }
 .player-bar .player-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.player-bar .player-acc { margin-left: auto; font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+.player-bar .player-acc { margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text-secondary); }
 .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; flex: none; vertical-align: -2px; }
 .swatch-w { background: #F3EFE8; }
 .swatch-b { background: #2A2320; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
@@ -452,13 +452,13 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 .acc-table th, .acc-table td { padding: 5px 4px; text-align: right; }
 .acc-table th[scope="row"] { text-align: left; font-weight: 500; color: var(--text-secondary); }
 .acc-table thead th { font-weight: 600; font-size: 14px; padding-bottom: 8px; }
-.acc-player { max-width: 110px; }
-.acc-player span:last-child { display: inline-block; max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; margin-left: 6px; }
+.acc-player { white-space: nowrap; }
+.acc-player span:last-child { display: inline-block; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; margin-left: 6px; }
 .acc-main td { font-size: 22px; font-weight: 700; color: var(--text-primary); font-family: var(--font-ui); }
 .acc-main th, .acc-main td { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 #classCounts td { font-family: var(--font-mono); color: var(--text-secondary); }
 #classCounts td.has { color: var(--text-primary); font-weight: 600; }
-#classCounts th { display: flex; align-items: center; gap: 8px; }
+#classCounts th { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 #classCounts .cls-badge { width: 20px; height: 20px; font-size: 10.5px; }
 #classCounts .cls-badge svg { width: 11px; height: 11px; }
 #classCounts tr:first-child th, #classCounts tr:first-child td { padding-top: 10px; }
