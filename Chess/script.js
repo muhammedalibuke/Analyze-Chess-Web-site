@@ -1288,16 +1288,11 @@ function showReview() {
   window.scrollTo(0, 0);
 }
 
-// Masaüstünde sağ sütun tahta sütunuyla aynı yükseklikte olsun (hamle listesi kalan yeri doldurur)
+// Sağ panelin yüksekliğini artık CSS yönetiyor (ekran yüksekliğini doldurur); eski satır içi
+// yükseklik kalmışsa temizle.
 function syncAnalysisHeight() {
-  const boardColEl = document.querySelector('.board-col');
   const sideColEl = document.querySelector('.side-col.analysis-col');
-  if (!boardColEl || !sideColEl) return;
-  if (window.matchMedia('(max-width: 1080px)').matches) {
-    sideColEl.style.height = '';
-    return;
-  }
-  sideColEl.style.height = boardColEl.offsetHeight + 'px';
+  if (sideColEl) sideColEl.style.height = '';
 }
 window.addEventListener('resize', () => { syncAnalysisHeight(); if (state) renderEvalGraph(); });
 if (window.ResizeObserver) {
@@ -1416,7 +1411,7 @@ function renderEvalBar(cp) {
 function renderEvalGraph() {
   if (!state || !evalGraphEl) return;
   const W = Math.max(200, Math.round(evalGraphEl.clientWidth || 600));
-  const H = 72, pad = 5;
+  const H = Math.max(40, Math.round(evalGraphEl.clientHeight || 64)), pad = 5;
   const n = state.fens.length;
   const x = i => (n > 1 ? (i / (n - 1)) * W : 0);
   const y = i => pad + (1 - whiteWinPercent(evalAtPly(i)) / 100) * (H - 2 * pad);
@@ -1480,6 +1475,7 @@ function updateCommentary(move, ply) {
     const pv = formatPv(prevFen, move.pv);
     if (pv) {
       commPvText.textContent = pv;
+      commPvContainer.title = pv; // tek satıra sığmazsa tamamı fareyle üzerine gelince görünür
       commPvContainer.classList.remove('hidden');
     }
   }

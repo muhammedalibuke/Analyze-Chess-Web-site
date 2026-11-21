@@ -266,11 +266,19 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
    ========================================================= */
 .review-layout { display: none; }
 /* İnceleme ekranı tahta + sağ panelden oluşan tek bir blok; üst bar bu bloğun genişliğini alır */
-.review-layout.active { display: block; width: fit-content; max-width: 100%; margin: 0 auto; padding: 20px 24px 32px; }
+/* Masaüstünde inceleme ekranı tam ekran bir uygulama gibi: sayfa kaymaz, tahta kalan
+   yüksekliğin tamamını, sağ panel ise kalan genişliği kullanır. */
+.review-layout.active {
+  --panel-w: clamp(380px, 27vw, 520px);
+  display: flex; flex-direction: column;
+  height: 100vh; height: 100dvh;
+  padding: 12px 24px 16px;
+}
 
 .review-bar {
   display: flex; align-items: center; gap: 20px;
-  margin-bottom: 20px;
+  flex: none;
+  margin-bottom: 12px;
 }
 .game-info { min-width: 0; }
 .game-title { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -278,26 +286,27 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 .result-chip { font-family: var(--font-mono); font-size: 13px; padding: 1px 8px; margin-left: 8px; border-radius: 99px; border: 1px solid var(--line-strong); color: var(--text-primary); }
 
 .review-grid {
+  flex: 1; min-height: 0;
   display: grid;
-  grid-template-columns: auto 420px;
-  justify-content: center;
+  grid-template-columns: minmax(0, 1fr) var(--panel-w);
   gap: 24px;
-  align-items: start;
 }
 
 /* ---------- Tahta sütunu ---------- */
-/* Tahta, oyuncu şeritleri ve gezinme düğmeleri tek ekrana sığsın (yüksekliğe ve genişliğe göre) */
+/* Tahta mümkün olan en büyük boyutta: hem kalan yüksekliğe hem kalan genişliğe sığar.
+   (100vh − üst bar − oyuncu şeritleri − boşluklar) ile (100vw − sağ panel − boşluklar)'ın küçüğü. */
 .board-col {
-  display: flex; flex-direction: column; gap: 10px;
-  width: min(calc(100vh - 196px), calc(100vw - 420px - 24px - 48px), 880px);
-  min-width: 400px;
+  display: flex; flex-direction: column; gap: 6px;
+  width: min(calc(100vh - 124px), calc(100vw - var(--panel-w) - 72px));
+  min-width: 360px;
+  justify-self: center;
 }
 
 .player-bar {
   display: flex; align-items: center; gap: 10px;
   padding: 0 4px 0 34px; /* değerlendirme çubuğu genişliği kadar içeriden başla */
   font-size: 15px; font-weight: 600;
-  min-height: 28px;
+  min-height: 24px;
 }
 .player-bar .swatch { margin-right: 2px; }
 .player-bar .player-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -339,14 +348,15 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   position: relative; flex: 1; min-width: 0;
   container-type: inline-size;
   background: linear-gradient(160deg, var(--board-frame-wood-1) 0%, var(--board-frame-wood-2) 100%);
-  border-radius: 18px;
-  padding: clamp(10px, 2.6%, 24px);
+  border-radius: 16px;
+  padding: clamp(8px, 1.8%, 18px);
   box-shadow: 0 30px 70px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.04);
 }
 .board-mat {
   display: grid;
-  grid-template-columns: 4.8% 1fr 4.8%;
-  grid-template-rows: 4.8% 1fr 4.8%;
+  grid-template-columns: 4% 1fr 4%;
+  grid-template-rows: 4% 1fr 4%;
+  aspect-ratio: 1 / 1; /* satır yüzdeleri genişliğe göre çözülsün; alt koordinat satırı kesilmesin */
   background: var(--board-frame-mat);
   border-radius: 8px;
   box-shadow: inset 0 0 0 1px rgba(83,106,88,0.25), 0 10px 26px rgba(0,0,0,0.35);
@@ -404,8 +414,8 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 /* ---------- Gezinme ---------- */
 .board-controls {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  padding-left: 34px;
 }
+.controls-card { flex: none; }
 .nav-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 42px; height: 42px;
@@ -430,7 +440,7 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   border-radius: var(--radius-md);
   overflow: hidden;
 }
-#evalGraph { display: block; width: 100%; height: 72px; cursor: pointer; }
+#evalGraph { display: block; width: 100%; height: 64px; cursor: pointer; }
 #evalGraph .g-black { fill: #2A2320; }
 #evalGraph .g-white { fill: #E9E4DA; }
 #evalGraph .g-mid { stroke: rgba(148,163,184,.45); stroke-width: 1; stroke-dasharray: 3 4; }
@@ -438,29 +448,34 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 #evalGraph .g-dot { stroke: #fff; stroke-width: 1.5; }
 
 /* ---------- Sağ sütun ---------- */
-.side-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.side-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
 .info-card {
   background: var(--panel-bg);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 16px 18px;
+  padding: 14px 16px;
 }
-.info-card-title { font-size: 15px; font-weight: 600; margin: 0 0 10px; }
+.comment-card { flex: none; }
+.info-card-title { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
 
-/* Yorum kartı */
+/* Yorum kartı: sınıf, hamle ve değerlendirme tek satırda; öneri ve motor devamı birer satır */
 .comment-card { border-left: 3px solid var(--cls, var(--line-strong)); }
-.comment-head { display: flex; align-items: center; gap: 10px; }
-.comment-label { font-weight: 600; font-size: 16px; color: var(--cls, var(--text-primary)); }
-.comment-eval { margin-left: auto; font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
-.comment-move { font-family: var(--font-mono); font-size: 20px; font-weight: 600; margin: 8px 0 2px; }
+.comment-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.comment-label { font-weight: 600; font-size: 15px; color: var(--cls, var(--text-primary)); white-space: nowrap; }
+.comment-move { font-family: var(--font-mono); font-size: 16px; font-weight: 600; white-space: nowrap; }
 .comment-move:empty { display: none; }
-.comment-text { margin: 0; font-size: 14px; color: var(--text-secondary); }
-.comment-best { margin-top: 10px; font-size: 14px; color: var(--text-secondary); }
+.comment-eval { margin-left: auto; font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+.comment-text { margin: 6px 0 0; font-size: 14px; color: var(--text-secondary); }
+.comment-best { margin-top: 6px; font-size: 14px; color: var(--text-secondary); }
 .comment-best:empty { display: none; }
 .comment-best b { font-family: var(--font-mono); color: var(--optimum); font-weight: 600; }
-.comment-pv { margin-top: 10px; max-height: 66px; overflow: auto; padding: 10px 12px; background: var(--panel-bg-2); border-radius: var(--radius-sm); }
-.comment-pv-label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
-.comment-pv p { margin: 0; font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); line-height: 1.6; }
+.comment-pv {
+  margin-top: 6px; padding: 6px 10px;
+  background: var(--panel-bg-2); border-radius: var(--radius-sm);
+  font-family: var(--font-mono); font-size: 13px; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.comment-pv-label { font-family: var(--font-ui); color: var(--text-muted); }
 .comment-card .cls-badge:empty { display: none; }
 
 /* Özet: doğruluk + sınıf sayıları (iki satırlık kompakt tablo) */
@@ -481,14 +496,16 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 .sum-count.has { color: var(--cls); font-weight: 600; }
 
 /* Hamle listesi */
-.movelist-card { display: flex; flex-direction: column; min-height: 260px; flex: 1; }
-.move-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 2px; margin: 0 -6px; padding: 0 6px; }
+.movelist-card { display: flex; flex-direction: column; min-height: 140px; flex: 1; padding-bottom: 8px; }
+.move-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 0; margin: 0 -6px; padding: 0 6px; }
 .move-row { display: grid; grid-template-columns: 34px 1fr 1fr; gap: 4px; align-items: center; }
+.move-row:nth-child(even) { background: rgba(255,255,255,0.025); border-radius: var(--radius-sm); }
 .move-num { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
 .move-chip {
   display: flex; align-items: center; justify-content: space-between; gap: 6px;
   font-family: var(--font-mono); font-size: 14px; font-weight: 500;
-  padding: 5px 8px;
+  padding: 3px 8px;
+  line-height: 1.45;
   border-radius: var(--radius-sm);
   background: transparent; color: var(--text-primary);
   border: 1px solid transparent;
@@ -504,11 +521,16 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 
 /* ---------- Duyarlı yerleşim ---------- */
 @media (max-width: 1080px) {
-  .review-layout.active { width: auto; max-width: 720px; }
-  .review-grid { grid-template-columns: minmax(0, 1fr); }
-  .board-col { width: 100%; min-width: 0; }
-  .side-col.analysis-col { height: auto !important; }
-  .movelist-card { flex: none; }
+  /* Dar ekranda alt alta: tahta, gezinme, yorum, özet, grafik, hamleler */
+  .review-layout.active { height: auto; max-width: 720px; margin: 0 auto; padding: 16px 16px 32px; }
+  .review-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .board-col { width: 100%; min-width: 0; order: 1; }
+  .side-col.analysis-col { display: contents; }
+  .controls-card { order: 2; }
+  .comment-card { order: 3; }
+  .summary-card { order: 4; }
+  .graph-card { order: 5; }
+  .movelist-card { order: 6; flex: none; }
   .move-list { max-height: 360px; }
 }
 @media (max-width: 560px) {
@@ -520,7 +542,7 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   .board-row { gap: 6px; }
   .eval-bar { width: 16px; }
   .eval-label { display: none; }
-  .player-bar, .board-controls { padding-left: 22px; }
+  .player-bar { padding-left: 22px; }
   .board-frame { border-radius: 12px; }
   .nav-btn { width: 38px; height: 38px; }
   .nav-flip { margin-left: 4px; }
@@ -529,6 +551,17 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   .sum-acc-h { width: 62px; }
   .sum-cls-h { width: 24px; }
   .sum-acc { font-size: 16px; }
+}
+/* Kısa ekranlar (ör. 1366×768): sağ panel sıkışır, hamle listesine yer kalsın */
+@media (min-width: 1081px) and (max-height: 860px) {
+  .comment-text { display: none; }
+  .summary-table th, .summary-table td { padding: 4px 0; }
+  .summary-table thead th { padding-bottom: 4px; }
+  .summary-card { padding: 8px 14px 4px; }
+  .sum-acc { font-size: 16px; }
+  #evalGraph { height: 48px; }
+  .info-card { padding: 10px 14px; }
+  .nav-btn { width: 38px; height: 38px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
