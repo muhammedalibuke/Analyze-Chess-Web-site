@@ -46,8 +46,11 @@ function selectTab(btn) {
     b.setAttribute('aria-selected', on ? 'true' : 'false');
     document.getElementById(b.dataset.tab).classList.toggle('active', on);
   }
+  // "Hesaptan getir" sekmesinde parti listeden seçilir; renk ve "Analiz et" düğmesi gizlenir
+  document.getElementById('mainSetupPanel').dataset.tab = btn.dataset.tab;
 }
 for (const b of tabButtons) b.addEventListener('click', () => selectTab(b));
+selectTab(tabButtons.find(b => b.classList.contains('active')) || tabButtons[0]);
 
 // --- Ortak yardımcılar ---
 function readHeaders(pgn) {
@@ -872,6 +875,7 @@ async function runAnalysis() {
         const results = new Array(fens.length);
         let nextIndex = 0;
         let completedCount = 0;
+        let localCount = 0; // bulutta bulunmayıp bu cihazda Stockfish ile hesaplanan pozisyonlar
         const concurrency = Math.max(1, pool.workers.length);
 
         async function analysisWorkerLoop() {
@@ -893,6 +897,7 @@ async function runAnalysis() {
                         };
                     } else {
                         // Bulutta veri yoksa yerel Stockfish motoruna düş
+                        localCount++;
                         results[idx] = await pool.analyze(fens[idx], depth);
                     }
                 } catch (err) {
@@ -905,7 +910,8 @@ async function runAnalysis() {
                 }
                 completedCount++;
                 progressFill.style.width = `${Math.round((completedCount / fens.length) * 100)}%`;
-                statusLine.textContent = `Analiz devam ediyor: ${completedCount}/${fens.length} pozisyon.`;
+                statusLine.textContent = `Analiz ediliyor: ${completedCount}/${fens.length} pozisyon` +
+                    (localCount ? ` (${localCount} tanesi çevrim içi veritabanında yok, bu cihazda hesaplanıyor; biraz sürebilir)` : '');
             }
         }
 

@@ -598,6 +598,10 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   .review-download .icon { width: 18px; height: 18px; }
 }
 
+.setup-panel[data-tab="contentAccount"] .config-row,
+.setup-panel[data-tab="contentAccount"] #analyzeBtn { display: none; }
+.setup-panel[data-tab="contentAccount"] .setup-actions { margin-top: 16px; }
+
 /* Taş görselleri (el çizimi set) — pieces/ klasöründe */
 .piece-graphic.r-b { background-image: url("pieces/r-b.png"); }
 .piece-graphic.n-b { background-image: url("pieces/n-b.png"); }
