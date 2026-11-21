@@ -21,84 +21,349 @@ const commTitle = document.getElementById('commTitle');
 const commText = document.getElementById('commText');
 const commPvContainer = document.getElementById('commPvContainer');
 const commPvText = document.getElementById('commPvText');
+// =========================================================
+// PARTİ YÜKLEME: dosya, metin ve hesaptan getir (Lichess / Chess.com)
+// =========================================================
+const tabButtons = [...document.querySelectorAll('.tab-btn[data-tab]')];
 const tabFileBtn = document.getElementById('tabFileBtn');
+const tabTextBtn = document.getElementById('tabTextBtn');
+const tabAccountBtn = document.getElementById('tabAccountBtn');
+const dropzoneLabel = document.getElementById('dropzoneLabel');
+const fileStatusText = document.getElementById('fileStatusText');
+const pgnFileInput = document.getElementById('pgnFile');
+const fileGameList = document.getElementById('fileGameList');
+const accountForm = document.getElementById('accountForm');
+const accountInput = document.getElementById('accountInput');
+const accountFetchBtn = document.getElementById('accountFetchBtn');
+const accountStatus = document.getElementById('accountStatus');
+const accountGameList = document.getElementById('accountGameList');
+const platformButtons = [...document.querySelectorAll('.platform-btn')];
 
-  const tabTextBtn = document.getElementById('tabTextBtn');
-  const contentFile = document.getElementById('contentFile');
-  const contentText = document.getElementById('contentText');
-  const dropzoneLabel = document.getElementById('dropzoneLabel');
-  const fileStatusText = document.getElementById('fileStatusText');
-  const pgnFileInput = document.getElementById('pgnFile');
-  tabFileBtn.addEventListener('click', () => {
-    tabFileBtn.classList.add('active');
-    tabTextBtn.classList.remove('active');
-    tabFileBtn.setAttribute('aria-selected', 'true');
-    tabTextBtn.setAttribute('aria-selected', 'false');
-    contentFile.classList.add('active');
-    contentText.classList.remove('active');
-  });
-  tabTextBtn.addEventListener('click', () => {
-    tabTextBtn.classList.add('active');
-    tabFileBtn.classList.remove('active');
-    tabTextBtn.setAttribute('aria-selected', 'true');
-    tabFileBtn.setAttribute('aria-selected', 'false');
-    contentText.classList.add('active');
-    contentFile.classList.remove('active');
-  });
+function selectTab(btn) {
+  for (const b of tabButtons) {
+    const on = b === btn;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    document.getElementById(b.dataset.tab).classList.toggle('active', on);
+  }
+}
+for (const b of tabButtons) b.addEventListener('click', () => selectTab(b));
 
-  // --- Sadece .pgn dosyalarına izin veren doğrulama mantığı ---
-  function isPgnFile(file) {
-    return !!file && /\.pgn$/i.test(file.name);
+// --- Ortak yardımcılar ---
+function readHeaders(pgn) {
+  const h = {};
+  const re = /^\s*\[(\w+)\s+"((?:[^"\\]|\\.)*)"\]\s*$/gm;
+  let m;
+  while ((m = re.exec(pgn))) h[m[1]] = m[2];
+  return h;
+}
+// Bir PGN metnindeki partileri ayırır (her parti [Event ...] gibi bir başlık bloğuyla başlar)
+function splitPgnGames(text) {
+  const t = text.replace(/\r\n?/g, '\n').trim();
+  if (!t) return [];
+  const parts = t.split(/\n\s*\n(?=\s*\[)/);
+  const games = [];
+  let cur = '';
+  for (const p of parts) {
+    // Başlık bloğu ile hamleler arasında boş satır olduğu için başlık ve hamleler ayrı
+    // parçalara düşer; hamle içermeyen parçayı bir sonrakine ekle.
+    cur = cur ? cur + '\n\n' + p : p;
+    const body = cur.replace(/^\s*\[.*\]\s*$/gm, '').trim();
+    if (body) { games.push(cur.trim()); cur = ''; }
   }
-  function resetFileSelection() {
-    pgnFileInput.value = '';
-    fileStatusText.textContent = '';
+  if (cur.trim()) games.push(cur.trim());
+  return games;
+}
+function countMoves(pgn) {
+  const body = pgn.replace(/^\s*\[.*\]\s*$/gm, '').replace(/\{[^}]*\}/g, '').replace(/\([^)]*\)/g, '');
+  const nums = body.match(/(\d+)\.(?!\.)/g);
+  return nums ? parseInt(nums[nums.length - 1], 10) : 0;
+}
+function resultFor(color, result) {
+  if (result === '1/2-1/2') return 'draw';
+  if (result === '1-0') return color === 'w' ? 'win' : 'loss';
+  if (result === '0-1') return color === 'b' ? 'win' : 'loss';
+  return null;
+}
+const RESULT_TEXT = { win: 'Kazandın', loss: 'Kaybettin', draw: 'Berabere' };
+const SPEED_TEXT = { ultraBullet: 'Ultra bullet', bullet: 'Bullet', blitz: 'Blitz', rapid: 'Rapid', classical: 'Klasik', correspondence: 'Yazışmalı', daily: 'Günlük' };
+function formatDate(ms) {
+  if (!ms) return '';
+  try { return new Date(ms).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch (e) { return ''; }
+}
+function formatClock(tc) {
+  // Lichess: { initial: 180, increment: 2 } — Chess.com: "180+2" ya da "1/259200"
+  if (!tc) return '';
+  if (typeof tc === 'object') return `${Math.round(tc.initial / 60)}+${tc.increment}`;
+  if (tc.includes('/')) return '';
+  const [base, inc] = tc.split('+');
+  return `${Math.round(parseInt(base, 10) / 60)}+${inc || 0}`;
+}
+
+// Seçilen partiyi analiz et; kullanıcının rengi biliniyorsa tahta onun tarafından gösterilsin
+function analyzePgn(pgn, userColor) {
+  pgnInput.value = pgn;
+  if (userColor) {
+    colorSelect.value = userColor === 'w' ? 'white' : 'black';
+    colorSelect.dispatchEvent(new Event('change'));
   }
-  function goToFileSelectScreen() {
-    tabFileBtn.click();
-    dropzoneLabel.classList.remove('dragover');
+  runAnalysis();
+}
+
+// Parti listesi (dosyadaki partiler ve hesaptan gelen partiler aynı görünümü kullanır)
+// item: { white, black, whiteElo, blackElo, result, userColor, meta, pgn }
+function renderGameList(listEl, items) {
+  listEl.innerHTML = '';
+  for (const it of items) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'game-item';
+    const outcome = it.userColor ? resultFor(it.userColor, it.result) : null;
+
+    const mark = document.createElement('span');
+    mark.className = 'game-result ' + (outcome || 'neutral');
+    mark.textContent = outcome ? RESULT_TEXT[outcome] : (it.result && it.result !== '*' ? it.result : '');
+    if (!mark.textContent) mark.classList.add('hidden');
+
+    const main = document.createElement('span');
+    main.className = 'game-main';
+    const players = document.createElement('span');
+    players.className = 'game-players';
+    const side = (name, elo, color) => {
+      const s = document.createElement('span');
+      s.className = 'game-player';
+      const sw = document.createElement('span');
+      sw.className = 'swatch ' + (color === 'w' ? 'swatch-w' : 'swatch-b');
+      s.appendChild(sw);
+      const n = document.createElement('span');
+      n.textContent = name + (elo ? ` (${elo})` : '');
+      if (it.userColor === color) n.className = 'is-user';
+      s.appendChild(n);
+      return s;
+    };
+    players.append(side(it.white, it.whiteElo, 'w'), side(it.black, it.blackElo, 'b'));
+    const meta = document.createElement('span');
+    meta.className = 'game-meta';
+    meta.textContent = it.meta;
+    main.append(players, meta);
+
+    const go = document.createElement('span');
+    go.className = 'game-go';
+    go.textContent = 'Analiz et';
+
+    btn.append(mark, main, go);
+    btn.addEventListener('click', () => analyzePgn(it.pgn, it.userColor));
+    li.appendChild(btn);
+    listEl.appendChild(li);
   }
-  function handleIncomingFile(file) {
-    if (!file) return;
-    if (!isPgnFile(file)) {
-      showError(`Geçersiz dosya türü: "${file.name}". Lütfen sadece .pgn uzantılı bir dosya yükleyin.`);
+}
+
+// --- 1) Dosya yükleme ---
+function isPgnFile(file) {
+  return !!file && /\.pgn$/i.test(file.name);
+}
+function resetFileSelection() {
+  pgnFileInput.value = '';
+  fileStatusText.textContent = '';
+  fileGameList.innerHTML = '';
+}
+function handleIncomingFile(file) {
+  if (!file) return;
+  selectTab(tabFileBtn);
+  dropzoneLabel.classList.remove('dragover');
+  if (!isPgnFile(file)) {
+    showError(`"${file.name}" bir PGN dosyası değil. Uzantısı .pgn olan bir dosya seç (Lichess ve Chess.com'dan "PGN indir" ile alınabilir).`);
+    resetFileSelection();
+    return;
+  }
+  clearError();
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = String(reader.result || '');
+    const games = splitPgnGames(text);
+    fileGameList.innerHTML = '';
+    if (games.length === 0) {
+      showError(`"${file.name}" boş görünüyor.`);
       resetFileSelection();
-      goToFileSelectScreen();
       return;
     }
-    clearError();
-    const reader = new FileReader();
-    reader.onload = () => {
-      pgnInput.value = reader.result;
-      fileStatusText.textContent = `✓ ${file.name} yüklendi.`;
-    };
-    reader.onerror = () => {
-      showError(`"${file.name}" dosyası okunamadı. Lütfen tekrar deneyin.`);
-      resetFileSelection();
-      goToFileSelectScreen();
-    };
-    reader.readAsText(file);
-  }
+    if (games.length === 1) {
+      pgnInput.value = games[0];
+      const h = readHeaders(games[0]);
+      const who = h.White || h.Black ? `${h.White || 'Beyaz'} – ${h.Black || 'Siyah'}, ` : '';
+      fileStatusText.textContent = `✓ ${file.name}: ${who}${countMoves(games[0])} hamle. "Analiz et"e bas.`;
+      return;
+    }
+    // Birden fazla parti: listeden seçtir
+    pgnInput.value = '';
+    fileStatusText.textContent = `✓ ${file.name}: ${games.length} parti bulundu. Analiz etmek istediğini seç.`;
+    renderGameList(fileGameList, games.slice(0, 200).map(pgn => {
+      const h = readHeaders(pgn);
+      const metaParts = [h.Event && h.Event !== '?' ? h.Event : '', h.Date && !h.Date.startsWith('?') ? h.Date : '', `${countMoves(pgn)} hamle`].filter(Boolean);
+      return { white: h.White || 'Beyaz', black: h.Black || 'Siyah', whiteElo: h.WhiteElo, blackElo: h.BlackElo, result: h.Result, userColor: null, meta: metaParts.join(', '), pgn };
+    }));
+  };
+  reader.onerror = () => {
+    showError(`"${file.name}" okunamadı. Tekrar dene.`);
+    resetFileSelection();
+  };
+  reader.readAsText(file);
+}
 
-  ['dragenter', 'dragover'].forEach(eventName => {
-    dropzoneLabel.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      dropzoneLabel.classList.add('dragover');
-    }, false);
+['dragenter', 'dragover'].forEach(ev => dropzoneLabel.addEventListener(ev, (e) => {
+  e.preventDefault();
+  dropzoneLabel.classList.add('dragover');
+}));
+['dragleave', 'drop'].forEach(ev => dropzoneLabel.addEventListener(ev, (e) => {
+  e.preventDefault();
+  dropzoneLabel.classList.remove('dragover');
+}));
+dropzoneLabel.addEventListener('drop', (e) => {
+  const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  handleIncomingFile(file);
+});
+// Dosya sayfanın herhangi bir yerine bırakılırsa tarayıcı onu açmasın; yükleme kutusuna yönlendir
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  if (state) return;
+  const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  handleIncomingFile(file);
+});
+pgnFileInput.addEventListener('change', () => handleIncomingFile(pgnFileInput.files[0]));
+
+// --- 2) Hesaptan getir: Lichess / Chess.com ---
+let platform = 'lichess';
+function setPlatform(p) {
+  platform = p;
+  for (const b of platformButtons) {
+    const on = b.dataset.platform === p;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+  accountInput.placeholder = p === 'lichess'
+    ? 'Lichess kullanıcı adı ya da parti linki'
+    : 'Chess.com kullanıcı adı';
+}
+for (const b of platformButtons) b.addEventListener('click', () => setPlatform(b.dataset.platform));
+try {
+  const saved = JSON.parse(localStorage.getItem('satranc-hesap') || 'null');
+  if (saved && saved.user) { accountInput.value = saved.user; setPlatform(saved.platform || 'lichess'); }
+} catch (e) { /* depolama kapalı olabilir */ }
+
+function setAccountStatus(msg, isError = false) {
+  accountStatus.textContent = msg;
+  accountStatus.classList.toggle('is-error', isError);
+}
+
+async function fetchLichessGames(user) {
+  const url = `https://lichess.org/api/games/user/${encodeURIComponent(user)}?max=20&pgnInJson=true&opening=true&clocks=false&evals=false`;
+  const r = await fetch(url, { headers: { Accept: 'application/x-ndjson' } });
+  if (r.status === 404) throw new Error(`Lichess'te "${user}" adında bir kullanıcı yok.`);
+  if (r.status === 429) throw new Error('Lichess şu an çok fazla istek alıyor. Bir dakika bekleyip tekrar dene.');
+  if (!r.ok) throw new Error(`Lichess'e ulaşılamadı (HTTP ${r.status}).`);
+  const lines = (await r.text()).trim().split('\n').filter(Boolean);
+  const lower = user.toLowerCase();
+  return lines.map(l => JSON.parse(l)).filter(g => g.variant === 'standard' && g.pgn && g.status !== 'aborted').map(g => {
+    const wName = (g.players.white.user && g.players.white.user.name) || (g.players.white.aiLevel ? `Stockfish ${g.players.white.aiLevel}` : 'Anonim');
+    const bName = (g.players.black.user && g.players.black.user.name) || (g.players.black.aiLevel ? `Stockfish ${g.players.black.aiLevel}` : 'Anonim');
+    const userColor = wName.toLowerCase() === lower ? 'w' : bName.toLowerCase() === lower ? 'b' : null;
+    const result = g.winner === 'white' ? '1-0' : g.winner === 'black' ? '0-1' : (g.status === 'draw' || g.status === 'stalemate' ? '1/2-1/2' : (g.status === 'started' ? '*' : '1/2-1/2'));
+    const meta = [
+      [SPEED_TEXT[g.speed] || g.speed, formatClock(g.clock)].filter(Boolean).join(' '),
+      formatDate(g.createdAt),
+      g.opening && g.opening.name
+    ].filter(Boolean).join(', ');
+    return { white: wName, black: bName, whiteElo: g.players.white.rating, blackElo: g.players.black.rating, result, userColor, meta, pgn: g.pgn };
   });
-  ['dragleave', 'drop'].forEach(eventName => {
-    dropzoneLabel.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      dropzoneLabel.classList.remove('dragover');
-    }, false);
+}
+
+async function fetchLichessGameById(id) {
+  const r = await fetch(`https://lichess.org/game/export/${id}?clocks=false&evals=false`);
+  if (r.status === 404) throw new Error('Bu Lichess partisi bulunamadı. Linki kontrol et.');
+  if (!r.ok) throw new Error(`Lichess'e ulaşılamadı (HTTP ${r.status}).`);
+  return r.text();
+}
+
+async function fetchChessComGames(user) {
+  const base = `https://api.chess.com/pub/player/${encodeURIComponent(user.toLowerCase())}`;
+  const r = await fetch(`${base}/games/archives`);
+  if (r.status === 404) throw new Error(`Chess.com'da "${user}" adında bir kullanıcı yok.`);
+  if (r.status === 429) throw new Error('Chess.com şu an çok fazla istek alıyor. Biraz bekleyip tekrar dene.');
+  if (!r.ok) throw new Error(`Chess.com'a ulaşılamadı (HTTP ${r.status}).`);
+  const archives = (await r.json()).archives || [];
+  const games = [];
+  // En yeni aydan geriye doğru, 20 parti toplanana kadar (en fazla 3 ay)
+  for (let i = archives.length - 1; i >= 0 && i >= archives.length - 3 && games.length < 20; i--) {
+    const rr = await fetch(archives[i]);
+    if (!rr.ok) break;
+    const month = ((await rr.json()).games || []).filter(g => g.rules === 'chess' && g.pgn);
+    games.push(...month.reverse());
+  }
+  const lower = user.toLowerCase();
+  return games.slice(0, 20).map(g => {
+    const userColor = g.white.username.toLowerCase() === lower ? 'w' : g.black.username.toLowerCase() === lower ? 'b' : null;
+    const result = readHeaders(g.pgn).Result || '*';
+    const h = readHeaders(g.pgn);
+    const opening = h.ECOUrl ? decodeURIComponent(h.ECOUrl.split('/').pop()).replace(/-/g, ' ') : '';
+    const meta = [
+      [SPEED_TEXT[g.time_class] || g.time_class, formatClock(g.time_control)].filter(Boolean).join(' '),
+      formatDate(g.end_time * 1000),
+      opening
+    ].filter(Boolean).join(', ');
+    return { white: g.white.username, black: g.black.username, whiteElo: g.white.rating, blackElo: g.black.rating, result, userColor, meta, pgn: g.pgn };
   });
-  dropzoneLabel.addEventListener('drop', (e) => {
-    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    handleIncomingFile(file);
-  }, false);
-  pgnFileInput.addEventListener('change', () => {
-    handleIncomingFile(pgnFileInput.files[0]);
-  });
+}
+
+accountForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearError();
+  const q = accountInput.value.trim();
+  accountGameList.innerHTML = '';
+  if (!q) { setAccountStatus('Bir kullanıcı adı yaz.', true); accountInput.focus(); return; }
+
+  // Lichess parti linki → doğrudan o partiyi analiz et
+  const lichessLink = q.match(/lichess\.org\/([a-zA-Z0-9]{8})/);
+  if (lichessLink) {
+    accountFetchBtn.disabled = true;
+    setAccountStatus('Parti getiriliyor…');
+    try {
+      const pgn = await fetchLichessGameById(lichessLink[1]);
+      setAccountStatus('');
+      analyzePgn(pgn, null);
+    } catch (err) {
+      setAccountStatus(err.message, true);
+    } finally {
+      accountFetchBtn.disabled = false;
+    }
+    return;
+  }
+  if (/chess\.com\//.test(q)) {
+    setAccountStatus('Chess.com parti linkleri doğrudan açılamıyor. Kullanıcı adını yaz, partiyi listeden seç.', true);
+    setPlatform('chesscom');
+    return;
+  }
+  if (!/^[\w-]{2,30}$/.test(q)) { setAccountStatus('Kullanıcı adı sadece harf, rakam, - ve _ içerebilir.', true); return; }
+
+  accountFetchBtn.disabled = true;
+  setAccountStatus(platform === 'lichess' ? "Lichess'ten son partiler getiriliyor…" : "Chess.com'dan son partiler getiriliyor…");
+  try {
+    const items = platform === 'lichess' ? await fetchLichessGames(q) : await fetchChessComGames(q);
+    if (items.length === 0) {
+      setAccountStatus('Bu hesapta analiz edilebilecek (standart satranç) parti bulunamadı.', true);
+    } else {
+      setAccountStatus(`Son ${items.length} parti. Analiz etmek istediğine tıkla.`);
+      renderGameList(accountGameList, items);
+      try { localStorage.setItem('satranc-hesap', JSON.stringify({ platform, user: q })); } catch (e2) { /* yok say */ }
+    }
+  } catch (err) {
+    setAccountStatus(err.message || 'Partiler getirilemedi. İnternet bağlantını kontrol et.', true);
+  } finally {
+    accountFetchBtn.disabled = false;
+  }
+});
 
 const ENGINE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js'; 
 const MATE_SCORE = 10000;
@@ -737,7 +1002,7 @@ async function runAnalysis() {
             }
         }
 
-        state = { headers: parsed.headers, moves: parsed.moves, fens, evals, bestMoveSanAt, perMove, detectedOpening };
+        state = { headers: parsed.headers, moves: parsed.moves, fens, evals, bestMoveSanAt, perMove, detectedOpening, rawPgn: raw };
         currentPly = fens.length - 1;
 
         showReview();
@@ -1239,14 +1504,28 @@ document.addEventListener('keydown', (e) => {
 });
 analyzeBtn.addEventListener('click', runAnalysis);
 
+// İncelenen partiyi .pgn dosyası olarak indir
+document.getElementById('downloadPgnBtn').addEventListener('click', () => {
+  if (!state) return;
+  const safe = t => String(t).replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'oyuncu';
+  const name = `${safe(playerName('w'))}_${safe(playerName('b'))}.pgn`;
+  const blob = new Blob([state.rawPgn.trim() + '\n'], { type: 'application/x-chess-pgn' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
 document.getElementById('backToSetupBtn').addEventListener('click', () => {
   reviewLayout.classList.remove('active');
   setupView.classList.remove('is-hidden');
   state = null;
   currentPly = 0;
   pgnInput.value = '';
-  fileStatusText.textContent = '';
-  pgnFileInput.value = '';
+  resetFileSelection();
   analyzeBtn.disabled = false;
   progressFill.style.width = '0%';
   updatePerspectiveFromSelect();

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -21,6 +21,7 @@
   <symbol id="i-next" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></symbol>
   <symbol id="i-last" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M18 5v14M6 6l7 6-7 6"/></symbol>
   <symbol id="i-flip" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0-3 3m3-3 3 3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m0 0 6-6m-6 6 6 6"/></symbol>
 </svg>
 
@@ -33,21 +34,38 @@
   </header>
 
   <h1 class="setup-title">Partini yükle, her hamlenin karşılığını gör.</h1>
-  <p class="setup-lede">PGN dosyanı bırak ya da metnini yapıştır. Her pozisyon bulut motorları ve Stockfish ile değerlendirilir; hamlelerin sınıflandırılır, doğruluk oranın hesaplanır.</p>
+  <p class="setup-lede">Lichess ya da Chess.com kullanıcı adını yaz, son partilerinden birini seç; ya da PGN dosyanı yükle. Her pozisyon bulut motorları ve Stockfish ile değerlendirilir, hamlelerin sınıflandırılır, doğruluk oranın hesaplanır.</p>
 
   <div class="setup-panel" id="mainSetupPanel">
-    <div class="tabs-nav" role="tablist" aria-label="PGN kaynağı">
-      <button class="tab-btn active" id="tabFileBtn" role="tab" aria-selected="true">Dosya yükle</button>
-      <button class="tab-btn" id="tabTextBtn" role="tab" aria-selected="false">Metni yapıştır</button>
+    <div class="tabs-nav" role="tablist" aria-label="Parti kaynağı">
+      <button class="tab-btn active" id="tabAccountBtn" data-tab="contentAccount" role="tab" aria-selected="true">Hesaptan getir</button>
+      <button class="tab-btn" id="tabFileBtn" data-tab="contentFile" role="tab" aria-selected="false">Dosya yükle</button>
+      <button class="tab-btn" id="tabTextBtn" data-tab="contentText" role="tab" aria-selected="false">Metni yapıştır</button>
     </div>
 
-    <div class="tab-content active" id="contentFile">
+    <div class="tab-content active" id="contentAccount">
+      <form class="account-form" id="accountForm" autocomplete="on">
+        <div class="platform-switch" role="radiogroup" aria-label="Site">
+          <button type="button" class="platform-btn active" data-platform="lichess" role="radio" aria-checked="true">Lichess</button>
+          <button type="button" class="platform-btn" data-platform="chesscom" role="radio" aria-checked="false">Chess.com</button>
+        </div>
+        <div class="account-row">
+          <input type="text" id="accountInput" name="username" placeholder="Lichess kullanıcı adı ya da parti linki" aria-label="Kullanıcı adı" autocapitalize="off" spellcheck="false">
+          <button type="submit" class="btn btn-primary" id="accountFetchBtn">Partileri getir</button>
+        </div>
+      </form>
+      <p class="account-status" id="accountStatus" aria-live="polite"></p>
+      <ul class="game-list" id="accountGameList"></ul>
+    </div>
+
+    <div class="tab-content" id="contentFile">
       <label class="dropzone-area" for="pgnFile" id="dropzoneLabel">
         <svg class="dropzone-icon" aria-hidden="true"><use href="#i-upload"/></svg>
         <span class="dropzone-text"><b>.pgn</b> dosyanı buraya sürükle ya da <b>seçmek için tıkla</b></span>
         <span class="file-status-text" id="fileStatusText"></span>
       </label>
       <input type="file" id="pgnFile" accept=".pgn" hidden>
+      <ul class="game-list" id="fileGameList"></ul>
     </div>
     <div class="tab-content" id="contentText">
       <textarea id="pgnInput" spellcheck="false" aria-label="PGN metni" placeholder="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 …&#10;&#10;Türkçe notasyon da olur: 1. e4 e5 2. Af3 Ac6"></textarea>
@@ -107,6 +125,9 @@
       <div class="game-title" id="gameTitle"></div>
       <div class="game-sub" id="gameSub"></div>
     </div>
+    <button class="btn btn-ghost btn-sm review-download" id="downloadPgnBtn">
+      <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>PGN'i indir
+    </button>
   </header>
 
   <div class="review-grid">
@@ -192,6 +213,6 @@
   </div>
 </div>
 
-<script type="module" src="script.js"></script>
+<script type="module" src="script.js?v=5"></script>
 </body>
 </html>
