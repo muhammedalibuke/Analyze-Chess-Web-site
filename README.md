@@ -31,6 +31,30 @@ Uygulama dosyaları `Chess/` klasöründedir (`index.html`, `style.css`, `script
 
 ## Değişiklik notları
 
+### Görünüm yenilemesi
+
+- **Tailwind CDN kaldırıldı.** Sitenin kendi CSS'inden sonra yüklendiği için başlık, açılır menü gibi
+  öğelerin stilini eziyordu (başlık küçük görünüyordu) ve konsolda "production'da kullanmayın"
+  uyarısı veriyordu. Tüm stil artık `style.css`'te.
+- **Giriş ekranı:** net bir başlık ve açıklama, sekmeli yükleme kutusu, hamle sınıflarının
+  açıklaması; geniş ekranlarda sağda örnek pozisyon (Morphy'nin 13.Rxd7!! hamlesi; tıklayınca
+  örnek parti analiz edilir).
+- **İnceleme ekranı:**
+  - Tahtanın yanında **değerlendirme çubuğu**, altında tıklanabilir **avantaj grafiği**
+    (hatalar ve parlak hamleler noktayla işaretli).
+  - Tahtanın üstünde/altında oyuncu adları ve doğruluk; üst barda oyuncular, sonuç, açılış ve turnuva.
+  - Hamle listesinde sınıf renkleri ve satranç işaretleri (!!, !, ?, ??, kitap simgesi).
+  - Doğruluk kartında her oyuncu için hangi sınıftan kaç hamle yaptığı.
+  - Yorum kartında değerlendirme değişimi (ör. +4.07 → +7.17), "Daha iyisi" önerisi ve motor devamı.
+  - Gezinme: baş/son düğmeleri, tahtayı çevirme; klavyede ← → Home End ve F (çevir).
+  - Önerilen hamle oku artık hedef kareye tam oturuyor (eskiden bir kare taşıyordu).
+  - Tüm sınıflar tek renk/simge setini kullanıyor (eskiden tahta rozeti, liste ve kart farklıydı).
+- **Mobil:** hamle listesinin kesilmesi ve alttaki kartların görünmemesi düzeltildi; tahta,
+  grafik, yorum, doğruluk ve hamle listesi alt alta sıralanıyor.
+- Tahta ve kontroller masaüstünde tek ekrana sığacak şekilde boyutlanıyor.
+- PGN'de başlık satırlarıyla hamleler arasında boş satır yoksa (yapıştırılan PGN'lerde sık)
+  oyuncu adları kayboluyordu; düzeltildi.
+
 ### Analiz düzeltmeleri
 
 Tüm değişiklikler `Chess/script.js` içinde `[DÜZELTME #n]` yorumlarıyla işaretlidir.
