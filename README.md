@@ -28,6 +28,20 @@ Uygulama dosyaları `Chess/` klasöründedir (`index.html`, `style.css`, `script
 
 İnceleme ekranındaki **PGN'i indir** düğmesi partiyi `.pgn` dosyası olarak kaydeder.
 
+## Doğruluk oranı nasıl hesaplanır?
+
+Lichess'in yöntemiyle (açık kaynak lila kodundaki `AccuracyPercent`): her hamlenin doğruluğu,
+hamleyi yapanın kazanma yüzdesindeki düşüşten hesaplanır; oyun doğruluğu, keskin anlara daha çok
+ağırlık veren ağırlıklı ortalama ile harmonik ortalamanın ortalamasıdır. Böylece birkaç büyük hata
+oranı gerçekçi biçimde düşürür. Lichess'in kendi analiz ettiği iki partide karşılaştırma:
+
+| Parti | Lichess (Beyaz / Siyah) | Bu site (Beyaz / Siyah) |
+|---|---|---|
+| lichess.org/2gQjWI17 (87 yarım hamle) | %49 / %52 | %48.0 / %49.9 |
+| lichess.org/ltjb7DJd (30 yarım hamle) | %53 / %79 | %54.9 / %86.0 |
+
+Küçük farklar, değerlendirmelerin farklı motorlardan/derinliklerden gelmesinden kaynaklanır.
+
 ## Güncelleme yaparken
 
 `index.html` içindeki `style.css?v=…` ve `script.js?v=…` numaralarını her sürümde bir artırın.
