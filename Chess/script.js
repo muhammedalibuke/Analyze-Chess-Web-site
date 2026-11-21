@@ -482,9 +482,11 @@ const whiteAccEl = document.getElementById('whiteAcc');
 const blackAccEl = document.getElementById('blackAcc');
 const moveListEl = document.getElementById('moveList');
 
-sampleBtn.addEventListener('click', () => { 
-  pgnInput.value = SAMPLE_PGN; 
+// "Örnek partiyi incele": örnek partiyi metin kutusuna koyup doğrudan analiz et
+sampleBtn.addEventListener('click', () => {
+  pgnInput.value = SAMPLE_PGN;
   document.getElementById('tabTextBtn').click();
+  runAnalysis();
 });
 
 function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('active'); }
@@ -721,8 +723,10 @@ class EnginePool {
             }
             if (pvMatch) {
               const idx = mpvMatch ? parseInt(mpvMatch[1], 10) : 1;
-              firstMoves[idx] = pvMatch[1].split(' ')[0];
-              if (idx === 1) currentPv = pvMatch[1];
+              // Stockfish.js satır sonuna "bmc 1.87" gibi teknik bir değer ekliyor; varyanta karışmasın
+              const pvMoves = pvMatch[1].replace(/\s+bmc\b.*$/, '').trim();
+              firstMoves[idx] = pvMoves.split(' ')[0];
+              if (idx === 1) currentPv = pvMoves;
             }
           } else if (line.startsWith('bestmove')) {
             if (settled) return;
@@ -1064,7 +1068,6 @@ const gameSubEl = document.getElementById('gameSub');
 const commLabel = document.getElementById('commLabel');
 const commEval = document.getElementById('commEval');
 const commBest = document.getElementById('commBest');
-const classCountsEl = document.getElementById('classCounts');
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // Hamle sınıfı rozeti (efsane, yorum kartı, tablo ve tahtada aynı görünüm)
@@ -1187,6 +1190,7 @@ function renderPlayers() {
 }
 
 // Doğruluk + hangi sınıftan kaç hamle
+// Özet tablosu: oyuncu başına doğruluk ve her sınıftan kaç hamle (sütun başlıkları sınıf simgeleri)
 function renderAccuracy() {
   const acc = state.accuracies;
   whiteAccEl.textContent = acc.white !== null ? '%' + acc.white.toFixed(1) : '—';
@@ -1194,24 +1198,29 @@ function renderAccuracy() {
   document.getElementById('accWhiteName').textContent = playerName('w');
   document.getElementById('accBlackName').textContent = playerName('b');
 
+  const head = document.getElementById('summaryHead');
+  head.querySelectorAll('.sum-cls-h').forEach(el => el.remove());
+  for (const cls of CLASS_ORDER) {
+    const th = document.createElement('th');
+    th.scope = 'col';
+    th.className = 'sum-cls-h';
+    th.appendChild(makeBadge(cls));
+    head.appendChild(th);
+  }
   const counts = { w: {}, b: {} };
   for (const m of state.perMove) counts[m.color][m.cls] = (counts[m.color][m.cls] || 0) + 1;
-  classCountsEl.innerHTML = '';
-  for (const cls of CLASS_ORDER) {
-    const tr = document.createElement('tr');
-    const th = document.createElement('th');
-    th.scope = 'row';
-    th.appendChild(makeBadge(cls));
-    th.appendChild(document.createTextNode(CLASS_META[cls].label));
-    tr.appendChild(th);
-    for (const c of ['w', 'b']) {
+  for (const [rowId, c] of [['sumRowW', 'w'], ['sumRowB', 'b']]) {
+    const row = document.getElementById(rowId);
+    row.querySelectorAll('.sum-count').forEach(el => el.remove());
+    for (const cls of CLASS_ORDER) {
       const td = document.createElement('td');
       const n = counts[c][cls] || 0;
+      td.className = 'sum-count' + (n > 0 ? ' has' : '');
       td.textContent = n;
-      if (n > 0) td.className = 'has';
-      tr.appendChild(td);
+      td.title = `${playerName(c)}: ${n} × ${CLASS_META[cls].label.toLowerCase()}`;
+      if (n > 0) td.style.setProperty('--cls', CLASS_META[cls].color);
+      row.appendChild(td);
     }
-    classCountsEl.appendChild(tr);
   }
 }
 
@@ -1294,6 +1303,7 @@ window.addEventListener('resize', () => { syncAnalysisHeight(); if (state) rende
 if (window.ResizeObserver) {
   const ro = new ResizeObserver(() => { syncAnalysisHeight(); if (state) renderEvalGraph(); });
   ro.observe(document.querySelector('.board-col'));
+  ro.observe(evalGraphEl);
 }
 
 function renderBoard(fen, move) {
@@ -1406,11 +1416,12 @@ function renderEvalBar(cp) {
 function renderEvalGraph() {
   if (!state || !evalGraphEl) return;
   const W = Math.max(200, Math.round(evalGraphEl.clientWidth || 600));
-  const H = 96, pad = 6;
+  const H = 72, pad = 5;
   const n = state.fens.length;
   const x = i => (n > 1 ? (i / (n - 1)) * W : 0);
   const y = i => pad + (1 - whiteWinPercent(evalAtPly(i)) / 100) * (H - 2 * pad);
   evalGraphEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  evalGraphEl.setAttribute('preserveAspectRatio', 'none'); // kenarlarda boşluk kalmasın
   let d = `M0,${H} `;
   for (let i = 0; i < n; i++) d += `L${x(i).toFixed(1)},${y(i).toFixed(1)} `;
   d += `L${W},${H} Z`;
@@ -1725,7 +1736,8 @@ function formatScore(cp) {
 function formatPv(startFen, pvString) {
   if (!pvString) return '';
   const tempGame = new Chess(startFen);
-  const moves = pvString.split(/\s+/);
+  // En fazla 10 yarım hamle göster; UCI dışı parçaları (ör. "bmc") at
+  const moves = pvString.split(/\s+/).filter(m => /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(m) || /^[KQRBNO]?[a-h1-8x=+#-]+$/.test(m)).slice(0, 10);
   const formatted = [];
   
   let moveNum = parseInt(startFen.split(' ')[5], 10) || 1;
