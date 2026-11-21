@@ -26,6 +26,7 @@
 
 <!-- ============ GİRİŞ EKRANI ============ -->
 <main class="setup-view" id="setupView">
+ <div class="setup-main">
   <header class="brand" id="mainHeader">
     <svg class="brand-mark" aria-hidden="true"><use href="#i-knight"/></svg>
     <span>Satranç İncelemesi</span>
@@ -84,6 +85,16 @@
   <footer class="note" id="mainFooter">
     Değerlendirmeler Lichess, ChessDB ve tarayıcında çalışan Stockfish'ten gelir. Açılış adları Lichess'in açık açılış veritabanından alınır.
   </footer>
+ </div>
+
+  <aside class="setup-preview" aria-label="Örnek inceleme">
+    <button class="preview-board-btn" id="previewBoardBtn" aria-label="Örnek partiyi analiz et">
+      <div class="board-frame preview-frame">
+        <div class="preview-board" id="previewBoard"></div>
+      </div>
+    </button>
+    <p class="preview-caption"><b>13.Rxd7!!</b> Morphy, Opera Partisi, 1858. Kalesini vererek mat ağını kuruyor. Tahtaya tıkla, partinin tamamını incele.</p>
+  </aside>
 </main>
 
 <!-- ============ İNCELEME EKRANI ============ -->

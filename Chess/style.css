@@ -85,9 +85,32 @@ button { cursor: pointer; }
    GİRİŞ EKRANI
    ========================================================= */
 .setup-view {
-  max-width: 680px;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 40px 20px 64px;
+  padding: 40px 24px 64px;
+  display: grid;
+  grid-template-columns: minmax(0, 640px) minmax(0, 1fr);
+  gap: 64px;
+  align-items: start;
+}
+.setup-main { min-width: 0; }
+
+/* Sağdaki örnek pozisyon (sadece geniş ekranlarda) */
+.setup-preview { position: sticky; top: 40px; margin-top: 76px; }
+.preview-board-btn { display: block; width: 100%; padding: 0; border: 0; background: none; border-radius: 18px; }
+.preview-board-btn:hover .preview-frame { box-shadow: 0 30px 70px rgba(0,0,0,0.5), 0 0 0 2px var(--accent); }
+.preview-frame { padding: clamp(10px, 3.2%, 20px); }
+.preview-board {
+  display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+  aspect-ratio: 1 / 1; width: 100%;
+  border-radius: 4px; overflow: hidden;
+  container-type: inline-size;
+}
+.preview-caption { margin: 16px 4px 0; font-size: 14px; color: var(--text-secondary); max-width: 46ch; }
+.preview-caption b { font-family: var(--font-mono); color: var(--genius); font-weight: 600; }
+@media (max-width: 1000px) {
+  .setup-view { grid-template-columns: minmax(0, 1fr); max-width: 680px; gap: 0; }
+  .setup-preview { display: none; }
 }
 .setup-view.is-hidden { display: none; }
 .brand {
@@ -102,7 +125,7 @@ button { cursor: pointer; }
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin: 0 0 14px;
-  max-width: 16ch;
+  max-width: 20ch;
 }
 .setup-lede {
   color: var(--text-secondary);
@@ -249,7 +272,8 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 }
 
 /* ---------- Tahta sütunu ---------- */
-.board-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 860px; width: 100%; justify-self: center; }
+/* Tahta, oyuncu şeritleri ve gezinme düğmeleri tek ekrana sığsın */
+.board-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; width: 100%; max-width: clamp(380px, calc(100vh - 196px), 860px); justify-self: center; }
 
 .player-bar {
   display: flex; align-items: center; gap: 10px;
@@ -272,8 +296,8 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   width: 24px;
   border-radius: 6px;
   overflow: hidden;
-  background: #2A2320;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  background: #2E2724;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.16);
 }
 .eval-fill {
   position: absolute; left: 0; right: 0; bottom: 0;
@@ -464,6 +488,7 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 /* ---------- Duyarlı yerleşim ---------- */
 @media (max-width: 1080px) {
   .review-grid { grid-template-columns: minmax(0, 1fr); max-width: 680px; margin: 0 auto; }
+  .board-col { max-width: none; }
   .side-col.analysis-col { height: auto !important; }
   .movelist-card { flex: none; }
   .move-list { max-height: 360px; }

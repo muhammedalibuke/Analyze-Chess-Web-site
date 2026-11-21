@@ -222,7 +222,15 @@ sampleBtn.addEventListener('click', () => {
 function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('active'); }
 function clearError() { errorMsg.classList.remove('active'); errorMsg.textContent = ''; }
 function sanitizePgn(raw) {
-  let s = raw;
+  let s = raw.replace(/\r\n?/g, '\n');
+  // chess.js, başlık satırları ([White "..."] vb.) ile hamleler arasında boş satır ister.
+  // Yapıştırılan PGN'lerde bu boş satır çoğu zaman yok; o zaman PGN okunamıyor, yedek
+  // ayrıştırıcıya düşülüyor ve oyuncu adları gibi başlık bilgileri kayboluyordu.
+  const lines = s.split('\n');
+  let hi = 0;
+  while (hi < lines.length && /^\s*\[.*\]\s*$/.test(lines[hi])) hi++;
+  if (hi > 0 && hi < lines.length && lines[hi].trim() !== '') lines.splice(hi, 0, '');
+  s = lines.join('\n');
   let prev;
   do { prev = s; s = s.replace(/\([^()]*\)/g, ''); } while (s !== prev);
   s = s.replace(/\{[^}]*\}/g, '');
@@ -793,6 +801,40 @@ function renderLegend() {
   }
 }
 renderLegend();
+
+// Giriş ekranının sağındaki örnek pozisyon: Opera Partisi, 13.Rxd7!!
+function renderPreviewBoard() {
+  const el = document.getElementById('previewBoard');
+  if (!el) return;
+  const board = new Chess('3rkb1r/p2Rqppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/2K4R b k - 0 13').board();
+  el.innerHTML = '';
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const sq = String.fromCharCode(97 + c) + (8 - r);
+      const div = document.createElement('div');
+      div.className = 'sq ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
+      if (sq === 'd1' || sq === 'd7') {
+        div.classList.add(sq === 'd7' ? 'hl-to' : 'hl-from');
+        div.style.setProperty('--hl-color', CLASS_META.genius.color);
+      }
+      const p = board[r][c];
+      if (p) {
+        const g = document.createElement('div');
+        g.className = `piece-graphic ${p.type}-${p.color}`;
+        div.appendChild(g);
+      }
+      if (sq === 'd7') div.appendChild(makeBadge('genius', 'board-badge'));
+      el.appendChild(div);
+    }
+  }
+}
+renderPreviewBoard();
+const previewBoardBtn = document.getElementById('previewBoardBtn');
+if (previewBoardBtn) previewBoardBtn.addEventListener('click', () => {
+  pgnInput.value = SAMPLE_PGN;
+  tabTextBtn.click();
+  runAnalysis();
+});
 
 function playerName(color) {
   const h = (state && state.headers) || {};
