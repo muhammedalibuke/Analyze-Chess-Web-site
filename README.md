@@ -6,6 +6,10 @@ sınıflandırılır ve oyuncuların doğruluk oranı hesaplanır.
 
 Uygulama dosyaları `Chess/` klasöründedir (`index.html`, `style.css`, `script.js`).
 
+![Giriş ekranı](docs/ekran-giris.jpg)
+
+![İnceleme ekranı](docs/ekran-inceleme.jpg)
+
 ## Çalıştırma
 
 `script.js` bir ES modülü olduğu için `index.html` dosyaya çift tıklanarak (`file://`) açılınca

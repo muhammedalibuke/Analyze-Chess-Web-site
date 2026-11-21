@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 
@@ -85,7 +85,6 @@
 
     <div class="setup-actions">
       <button class="btn btn-primary" id="analyzeBtn">Analiz et</button>
-      <button class="btn btn-ghost" id="sampleBtn">Örnek partiyi yükle</button>
     </div>
 
     <div class="status-row" id="statusRow" aria-live="polite">
@@ -94,6 +93,7 @@
     </div>
     <div class="error-msg" id="errorMsg" role="alert"></div>
   </div>
+  <p class="setup-alt">Denemek mi istiyorsun? <button type="button" class="link-btn" id="sampleBtn">Örnek partiyi incele</button> (Morphy, Opera Partisi, 1858)</p>
 
   <section class="legend" aria-label="Hamle sınıfları">
     <h2 class="legend-title">Hamleler nasıl işaretlenir?</h2>
@@ -107,9 +107,12 @@
 
   <aside class="setup-preview" aria-label="Örnek inceleme">
     <button class="preview-board-btn" id="previewBoardBtn" aria-label="Örnek partiyi analiz et">
-      <div class="board-frame preview-frame">
-        <div class="preview-board" id="previewBoard"></div>
-      </div>
+      <span class="preview-row">
+        <span class="eval-bar preview-eval" aria-hidden="true"><span class="eval-fill" style="height:88%"></span><span class="eval-label on-white">7.6</span></span>
+        <span class="board-frame preview-frame">
+          <span class="preview-mat"><span class="preview-board" id="previewBoard"></span></span>
+        </span>
+      </span>
     </button>
     <p class="preview-caption"><b>13.Rxd7!!</b> Morphy, Opera Partisi, 1858. Kalesini vererek mat ağını kuruyor. Tahtaya tıkla, partinin tamamını incele.</p>
   </aside>
@@ -163,10 +166,6 @@
         <button class="nav-btn" id="lastBtn" aria-label="Sona git" title="Sona git (End)"><svg aria-hidden="true"><use href="#i-last"/></svg></button>
         <button class="nav-btn nav-flip" id="flipBtn" aria-label="Tahtayı çevir" title="Tahtayı çevir (F)"><svg aria-hidden="true"><use href="#i-flip"/></svg></button>
       </div>
-
-      <div class="graph-card">
-        <svg id="evalGraph" role="img" aria-label="Parti boyunca avantaj grafiği. Bir noktaya tıklayarak o hamleye git."></svg>
-      </div>
     </section>
 
     <aside class="side-col analysis-col" aria-label="Analiz">
@@ -185,24 +184,18 @@
         </div>
       </div>
 
-      <div class="info-card acc-card" id="accuracyCard">
-        <table class="acc-table">
-          <thead>
-            <tr>
-              <th scope="col"><span class="visually-hidden">Sınıf</span></th>
-              <th scope="col" class="acc-player"><span class="swatch swatch-w"></span><span id="accWhiteName">Beyaz</span></th>
-              <th scope="col" class="acc-player"><span class="swatch swatch-b"></span><span id="accBlackName">Siyah</span></th>
-            </tr>
-          </thead>
+      <div class="info-card summary-card" id="accuracyCard">
+        <table class="summary-table">
+          <thead><tr id="summaryHead"><th scope="col"><span class="visually-hidden">Oyuncu</span></th><th scope="col" class="sum-acc-h">Doğruluk</th></tr></thead>
           <tbody>
-            <tr class="acc-main">
-              <th scope="row">Doğruluk</th>
-              <td id="whiteAcc">—</td>
-              <td id="blackAcc">—</td>
-            </tr>
+            <tr id="sumRowW"><th scope="row"><span class="swatch swatch-w"></span><span class="sum-name" id="accWhiteName">Beyaz</span></th><td class="sum-acc" id="whiteAcc">—</td></tr>
+            <tr id="sumRowB"><th scope="row"><span class="swatch swatch-b"></span><span class="sum-name" id="accBlackName">Siyah</span></th><td class="sum-acc" id="blackAcc">—</td></tr>
           </tbody>
-          <tbody id="classCounts"></tbody>
         </table>
+      </div>
+
+      <div class="graph-card">
+        <svg id="evalGraph" role="img" aria-label="Parti boyunca avantaj grafiği. Bir noktaya tıklayarak o hamleye git."></svg>
       </div>
 
       <div class="info-card movelist-card">
@@ -213,6 +206,6 @@
   </div>
 </div>
 
-<script type="module" src="script.js?v=6"></script>
+<script type="module" src="script.js?v=7"></script>
 </body>
 </html>

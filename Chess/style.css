@@ -85,43 +85,55 @@ button { cursor: pointer; }
    GİRİŞ EKRANI
    ========================================================= */
 .setup-view {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 40px 24px 64px;
+  min-height: 100vh;
+  padding: 48px 32px;
   display: grid;
-  grid-template-columns: minmax(0, 640px) minmax(0, 1fr);
-  gap: 64px;
-  align-items: start;
+  grid-template-columns: minmax(0, 600px) minmax(0, 520px);
+  justify-content: center;
+  align-content: center;
+  gap: 40px 80px;
 }
 .setup-main { min-width: 0; }
 
-/* Sağdaki örnek pozisyon (sadece geniş ekranlarda) */
-.setup-preview { position: sticky; top: 40px; margin-top: 76px; }
-.preview-board-btn { display: block; width: 100%; padding: 0; border: 0; background: none; border-radius: 18px; }
+/* Sağdaki örnek pozisyon (sadece geniş ekranlarda) — inceleme ekranındaki tahtanın küçük bir kopyası */
+.setup-preview { align-self: center; }
+.preview-board-btn { display: block; width: 100%; padding: 0; border: 0; background: none; border-radius: 18px; text-align: left; }
+.preview-row { display: flex; gap: 10px; }
+.preview-eval { display: block; width: 22px; }
+.preview-frame { display: block; flex: 1; min-width: 0; padding: clamp(10px, 3%, 18px); transition: box-shadow .15s ease; }
 .preview-board-btn:hover .preview-frame { box-shadow: 0 30px 70px rgba(0,0,0,0.5), 0 0 0 2px var(--accent); }
-.preview-frame { padding: clamp(10px, 3.2%, 20px); }
+.preview-mat { display: block; padding: 3.2%; background: var(--board-frame-mat); border-radius: 8px; }
 .preview-board {
   display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
   aspect-ratio: 1 / 1; width: 100%;
-  border-radius: 4px; overflow: hidden;
+  border-radius: 3px; overflow: hidden;
   container-type: inline-size;
 }
-.preview-caption { margin: 16px 4px 0; font-size: 14px; color: var(--text-secondary); max-width: 46ch; }
+.preview-caption { margin: 16px 0 0 32px; font-size: 14px; color: var(--text-secondary); max-width: 46ch; }
 .preview-caption b { font-family: var(--font-mono); color: var(--genius); font-weight: 600; }
+
+.setup-alt { margin: 14px 2px 0; font-size: 14px; color: var(--text-muted); }
+.link-btn {
+  background: none; border: 0; padding: 0;
+  color: var(--accent); font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+}
+.link-btn:hover { color: #6FE9DA; }
+
 @media (max-width: 1000px) {
-  .setup-view { grid-template-columns: minmax(0, 1fr); max-width: 680px; gap: 0; }
+  .setup-view { grid-template-columns: minmax(0, 640px); min-height: 0; align-content: start; padding: 32px 20px 56px; }
   .setup-preview { display: none; }
 }
 .setup-view.is-hidden { display: none; }
 .brand {
   display: flex; align-items: center; gap: 10px;
   font-weight: 600; font-size: 15px; color: var(--text-secondary);
-  margin-bottom: 48px;
+  margin-bottom: 36px;
 }
 .brand-mark { width: 26px; height: 26px; color: var(--board-light); }
 .setup-title {
   font-weight: 700;
-  font-size: clamp(30px, 5vw, 44px);
+  font-size: clamp(32px, 3.6vw, 52px);
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin: 0 0 14px;
@@ -129,7 +141,7 @@ button { cursor: pointer; }
 }
 .setup-lede {
   color: var(--text-secondary);
-  font-size: 16px;
+  font-size: 17px;
   max-width: 58ch;
   margin: 0 0 28px;
 }
@@ -253,7 +265,8 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
    İNCELEME EKRANI
    ========================================================= */
 .review-layout { display: none; }
-.review-layout.active { display: block; max-width: 1360px; margin: 0 auto; padding: 20px 24px 40px; }
+/* İnceleme ekranı tahta + sağ panelden oluşan tek bir blok; üst bar bu bloğun genişliğini alır */
+.review-layout.active { display: block; width: fit-content; max-width: 100%; margin: 0 auto; padding: 20px 24px 32px; }
 
 .review-bar {
   display: flex; align-items: center; gap: 20px;
@@ -266,14 +279,19 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 
 .review-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  gap: 28px;
+  grid-template-columns: auto 420px;
+  justify-content: center;
+  gap: 24px;
   align-items: start;
 }
 
 /* ---------- Tahta sütunu ---------- */
-/* Tahta, oyuncu şeritleri ve gezinme düğmeleri tek ekrana sığsın */
-.board-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; width: 100%; max-width: clamp(380px, calc(100vh - 196px), 860px); justify-self: center; }
+/* Tahta, oyuncu şeritleri ve gezinme düğmeleri tek ekrana sığsın (yüksekliğe ve genişliğe göre) */
+.board-col {
+  display: flex; flex-direction: column; gap: 10px;
+  width: min(calc(100vh - 196px), calc(100vw - 420px - 24px - 48px), 880px);
+  min-width: 400px;
+}
 
 .player-bar {
   display: flex; align-items: center; gap: 10px;
@@ -404,20 +422,19 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   min-width: 150px; text-align: center; color: var(--text-primary);
 }
 
-/* ---------- Avantaj grafiği ---------- */
+/* ---------- Avantaj grafiği (sağ panelde) ---------- */
 .graph-card {
-  margin-left: 34px;
+  flex: none;
   background: var(--panel-bg-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
-#evalGraph { display: block; width: 100%; height: 96px; cursor: pointer; }
+#evalGraph { display: block; width: 100%; height: 72px; cursor: pointer; }
 #evalGraph .g-black { fill: #2A2320; }
 #evalGraph .g-white { fill: #E9E4DA; }
 #evalGraph .g-mid { stroke: rgba(148,163,184,.45); stroke-width: 1; stroke-dasharray: 3 4; }
 #evalGraph .g-cursor { stroke: var(--accent); stroke-width: 2; }
-#evalGraph .g-hover { stroke: rgba(255,255,255,.35); stroke-width: 1; }
 #evalGraph .g-dot { stroke: #fff; stroke-width: 1.5; }
 
 /* ---------- Sağ sütun ---------- */
@@ -435,36 +452,36 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 .comment-head { display: flex; align-items: center; gap: 10px; }
 .comment-label { font-weight: 600; font-size: 16px; color: var(--cls, var(--text-primary)); }
 .comment-eval { margin-left: auto; font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
-.comment-move { font-family: var(--font-mono); font-size: 20px; font-weight: 600; margin: 10px 0 4px; }
+.comment-move { font-family: var(--font-mono); font-size: 20px; font-weight: 600; margin: 8px 0 2px; }
 .comment-move:empty { display: none; }
 .comment-text { margin: 0; font-size: 14px; color: var(--text-secondary); }
 .comment-best { margin-top: 10px; font-size: 14px; color: var(--text-secondary); }
 .comment-best:empty { display: none; }
 .comment-best b { font-family: var(--font-mono); color: var(--optimum); font-weight: 600; }
-.comment-pv { margin-top: 10px; padding: 10px 12px; background: var(--panel-bg-2); border-radius: var(--radius-sm); }
+.comment-pv { margin-top: 10px; max-height: 66px; overflow: auto; padding: 10px 12px; background: var(--panel-bg-2); border-radius: var(--radius-sm); }
 .comment-pv-label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
 .comment-pv p { margin: 0; font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); line-height: 1.6; }
 .comment-card .cls-badge:empty { display: none; }
 
-/* Doğruluk + sınıf sayıları tablosu */
-.acc-card { padding: 12px 14px; }
-.acc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.acc-table th, .acc-table td { padding: 5px 4px; text-align: right; }
-.acc-table th[scope="row"] { text-align: left; font-weight: 500; color: var(--text-secondary); }
-.acc-table thead th { font-weight: 600; font-size: 14px; padding-bottom: 8px; }
-.acc-player { white-space: nowrap; }
-.acc-player span:last-child { display: inline-block; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; margin-left: 6px; }
-.acc-main td { font-size: 22px; font-weight: 700; color: var(--text-primary); font-family: var(--font-ui); }
-.acc-main th, .acc-main td { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
-#classCounts td { font-family: var(--font-mono); color: var(--text-secondary); }
-#classCounts td.has { color: var(--text-primary); font-weight: 600; }
-#classCounts th { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-#classCounts .cls-badge { width: 20px; height: 20px; font-size: 10.5px; }
-#classCounts .cls-badge svg { width: 11px; height: 11px; }
-#classCounts tr:first-child th, #classCounts tr:first-child td { padding-top: 10px; }
+/* Özet: doğruluk + sınıf sayıları (iki satırlık kompakt tablo) */
+.summary-card { flex: none; padding: 12px 16px 6px; }
+.summary-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
+.summary-table th, .summary-table td { padding: 8px 0; }
+.summary-table thead th { padding: 0 0 8px; vertical-align: bottom; }
+.summary-table thead th:first-child { width: auto; }
+.sum-acc-h { width: 74px; text-align: right; padding-right: 10px !important; font-size: 12.5px; font-weight: 500; color: var(--text-muted); }
+.sum-cls-h { width: 28px; text-align: center; }
+.sum-cls-h .cls-badge { width: 20px; height: 20px; font-size: 10.5px; }
+.sum-cls-h .cls-badge svg { width: 11px; height: 11px; }
+.summary-table tbody tr { border-top: 1px solid var(--line); }
+.summary-table tbody th { text-align: left; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.summary-table tbody th .swatch { margin-right: 8px; }
+.sum-acc { text-align: right; padding-right: 10px !important; font-size: 18px; font-weight: 700; white-space: nowrap; }
+.sum-count { text-align: center; font-family: var(--font-mono); font-size: 13.5px; color: var(--text-muted); }
+.sum-count.has { color: var(--cls); font-weight: 600; }
 
 /* Hamle listesi */
-.movelist-card { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.movelist-card { display: flex; flex-direction: column; min-height: 260px; flex: 1; }
 .move-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 2px; margin: 0 -6px; padding: 0 6px; }
 .move-row { display: grid; grid-template-columns: 34px 1fr 1fr; gap: 4px; align-items: center; }
 .move-num { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
@@ -487,32 +504,37 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 
 /* ---------- Duyarlı yerleşim ---------- */
 @media (max-width: 1080px) {
-  .review-grid { grid-template-columns: minmax(0, 1fr); max-width: 680px; margin: 0 auto; }
-  .board-col { max-width: none; }
+  .review-layout.active { width: auto; max-width: 720px; }
+  .review-grid { grid-template-columns: minmax(0, 1fr); }
+  .board-col { width: 100%; min-width: 0; }
   .side-col.analysis-col { height: auto !important; }
   .movelist-card { flex: none; }
   .move-list { max-height: 360px; }
 }
 @media (max-width: 560px) {
-  .setup-view { padding-top: 24px; }
   .brand { margin-bottom: 28px; }
   .setup-panel { padding: 16px; }
   .review-layout.active { padding: 12px 12px 32px; }
-  .review-bar { gap: 12px; margin-bottom: 12px; }
+  .review-bar { gap: 10px; margin-bottom: 12px; }
   .game-title { font-size: 16px; }
   .board-row { gap: 6px; }
   .eval-bar { width: 16px; }
   .eval-label { display: none; }
   .player-bar, .board-controls { padding-left: 22px; }
-  .graph-card { margin-left: 22px; }
   .board-frame { border-radius: 12px; }
   .nav-btn { width: 38px; height: 38px; }
   .nav-flip { margin-left: 4px; }
   #plyLabel { min-width: 0; flex: 1; font-size: 13px; }
+  .summary-card { padding: 10px 10px 4px; }
+  .sum-acc-h { width: 62px; }
+  .sum-cls-h { width: 24px; }
+  .sum-acc { font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* Taş görselleri (el çizimi set, base64) */
 
 /* ---------- Hesaptan getir ---------- */
 .account-form { display: flex; flex-direction: column; gap: 12px; }
@@ -586,7 +608,7 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 
 @media (max-width: 560px) {
   .tabs-nav { display: flex; width: 100%; }
-  .tab-btn { flex: 1; padding: 8px 6px; font-size: 13.5px; }
+  .tab-btn { flex: 1; padding: 8px 4px; font-size: 13px; white-space: nowrap; }
   .account-row { flex-direction: column; }
   .game-item { grid-template-columns: minmax(0, 1fr) auto; }
   .game-result { grid-column: 1 / -1; }
@@ -599,8 +621,7 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 }
 
 .setup-panel[data-tab="contentAccount"] .config-row,
-.setup-panel[data-tab="contentAccount"] #analyzeBtn { display: none; }
-.setup-panel[data-tab="contentAccount"] .setup-actions { margin-top: 16px; }
+.setup-panel[data-tab="contentAccount"] .setup-actions { display: none; }
 
 /* Taş görselleri (el çizimi set) — pieces/ klasöründe */
 .piece-graphic.r-b { background-image: url("pieces/r-b.png"); }
