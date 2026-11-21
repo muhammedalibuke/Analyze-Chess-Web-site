@@ -1088,6 +1088,18 @@ async function getHybridAnalysis(fen) {
   const pieceCount = getPieceCount(fen);
   const sideToMoveIsWhite = fen.split(' ')[1] === 'w';
 
+  // 0. Oyun bitmiş mi? (mat / pat / yetersiz materyal)
+  // Bu pozisyonlarda bulut kaynakları sonuç vermiyor, tarayıcıdaki Stockfish.js de hamle
+  // döndürmediği için analiz zaman aşımına kadar (~70 sn) takılıyordu. Ayrıca son hamle
+  // (ör. Rd8#) ekranda "(0.00)" görünüyordu. Sonucu doğrudan kendimiz veriyoruz.
+  const g = new Chess(fen);
+  if (g.in_checkmate()) {
+    return { source: 'game_over', score: { type: 'mate', value: 0 }, score2: null, bestMoveUci: null, pv: '', moveScores: {} };
+  }
+  if (g.in_stalemate() || g.insufficient_material()) {
+    return { source: 'game_over', score: { type: 'cp', value: 0 }, score2: null, bestMoveUci: null, pv: '', moveScores: {} };
+  }
+
   // 1. Oyun Sonu (7 veya daha az taş): Lichess Syzygy tablebase — kesin sonuç
   if (pieceCount <= 7) {
     try {
