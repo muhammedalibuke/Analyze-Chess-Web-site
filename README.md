@@ -17,6 +17,23 @@ Uygulama dosyaları `Chess/` klasöründedir (`index.html`, `style.css`, `script
 - **Yerelde:** `Chess` klasöründe `python -m http.server 8000` çalıştırıp
   `http://localhost:8000` adresini açın.
 
+## Parti yükleme yolları
+
+- **Hesaptan getir:** Lichess ya da Chess.com kullanıcı adını yaz → son 20 parti listelenir →
+  birine tıkla, analiz başlar. Tahta otomatik olarak senin rengine çevrilir. Lichess parti linki
+  (`https://lichess.org/xxxxxxxx`) de yapıştırılabilir. Lichess ve Chess.com'un herkese açık
+  API'leri kullanılır, giriş gerekmez.
+- **Dosya yükle:** `.pgn` dosyası sürükle/seç. Dosyada birden fazla parti varsa liste çıkar, birini seçersin.
+- **Metni yapıştır:** PGN metni (Türkçe notasyon da olur).
+
+İnceleme ekranındaki **PGN'i indir** düğmesi partiyi `.pgn` dosyası olarak kaydeder.
+
+## Güncelleme yaparken
+
+`index.html` içindeki `style.css?v=…` ve `script.js?v=…` numaralarını her sürümde bir artırın.
+Aksi halde tarayıcı/CDN önbelleği yeni sayfayı eski stil dosyasıyla birleştirip sayfayı bozuk
+gösterebilir. Taş görselleri `Chess/pieces/` klasöründedir.
+
 ## Nasıl kontrol edilir?
 
 1. Siteyi açın, **Örnek Parti Yükle** → **Analiz Et**'e basın (Morphy'nin "Opera Partisi").
