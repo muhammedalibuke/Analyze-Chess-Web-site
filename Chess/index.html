@@ -3,119 +3,193 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Satranç Analizi</title>
+  <title>Satranç İncelemesi</title>
+  <meta name="description" content="PGN yükle; her hamle bulut motorları ve Stockfish ile değerlendirilsin, hamleler sınıflandırılsın, doğruluk oranın hesaplansın.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="wrap" id="mainWrap">
-  <header class="masthead" id="mainHeader">
-    <h1>Satranç İncelemesi</h1>
-    <p class="subtitle">PGN'ini yükle </p>
+<!-- Ortak SVG simgeleri -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-knight" viewBox="0 0 24 24"><path fill="currentColor" d="M7 21h11v-2.2c0-1.6-.5-3.2-1.4-4.6l-1.1-1.6c-.4-.6-.3-1.4.2-1.9l.6-.6V6.5C16.3 4 14.3 2 11.8 2H10l1 2-4.6 3.3C5.5 8 5 9 5 10.1v1.6c0 .7.6 1.3 1.3 1.3h1.9l1.8-1.4c.3-.2.7-.2.9.1.2.3.2.7-.1.9L8.6 14c-1 .8-1.6 2-1.6 3.3V21Zm2.6-12.4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-first" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 5v14M18 6l-7 6 7 6"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-last" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M18 5v14M6 6l7 6-7 6"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0-3 3m3-3 3 3"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m0 0 6-6m-6 6 6 6"/></symbol>
+</svg>
+
+<!-- ============ GİRİŞ EKRANI ============ -->
+<main class="setup-view" id="setupView">
+ <div class="setup-main">
+  <header class="brand" id="mainHeader">
+    <svg class="brand-mark" aria-hidden="true"><use href="#i-knight"/></svg>
+    <span>Satranç İncelemesi</span>
   </header>
+
+  <h1 class="setup-title">Partini yükle, her hamlenin karşılığını gör.</h1>
+  <p class="setup-lede">PGN dosyanı bırak ya da metnini yapıştır. Her pozisyon bulut motorları ve Stockfish ile değerlendirilir; hamlelerin sınıflandırılır, doğruluk oranın hesaplanır.</p>
+
   <div class="setup-panel" id="mainSetupPanel">
-    <div class="tabs-nav">
-      <button class="tab-btn active" id="tabFileBtn">📂 Dosya Yükle</button>
-      <button class="tab-btn" id="tabTextBtn">📝 Metin Olarak Yapıştır</button>
+    <div class="tabs-nav" role="tablist" aria-label="PGN kaynağı">
+      <button class="tab-btn active" id="tabFileBtn" role="tab" aria-selected="true">Dosya yükle</button>
+      <button class="tab-btn" id="tabTextBtn" role="tab" aria-selected="false">Metni yapıştır</button>
     </div>
+
     <div class="tab-content active" id="contentFile">
       <label class="dropzone-area" for="pgnFile" id="dropzoneLabel">
-        <span class="dropzone-icon">☁️</span>
-        <span class="dropzone-text">PGN dosyanızı <b>buraya sürükleyin</b> veya tıklayarak <b>seçin</b></span>
+        <svg class="dropzone-icon" aria-hidden="true"><use href="#i-upload"/></svg>
+        <span class="dropzone-text"><b>.pgn</b> dosyanı buraya sürükle ya da <b>seçmek için tıkla</b></span>
         <span class="file-status-text" id="fileStatusText"></span>
       </label>
-      <input type="file" id="pgnFile" accept=".pgn" style="display: none;">
+      <input type="file" id="pgnFile" accept=".pgn" hidden>
     </div>
     <div class="tab-content" id="contentText">
-      <textarea id="pgnInput" class="w-full h-40 bg-[#111c2a] border border-gray-800 rounded-lg p-3 text-sm text-gray-200 font-mono focus:outline-none focus:border-blue-500 transition-colors resize-none mb-4" placeholder="1. e4 e5 2. Nf3... veya PGN metnini buraya yapıştırın..."></textarea>
+      <textarea id="pgnInput" spellcheck="false" aria-label="PGN metni" placeholder="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 …&#10;&#10;Türkçe notasyon da olur: 1. e4 e5 2. Af3 Ac6"></textarea>
     </div>
+
     <div class="config-row">
-      <div class="select-group">
+      <label class="select-group" for="colorSelect">
         <span class="setup-label">Hangi renkle oynadın?</span>
         <select id="colorSelect">
-          <option value="auto" selected>Farketmez</option>
+          <option value="auto" selected>Fark etmez</option>
           <option value="white">Beyaz</option>
           <option value="black">Siyah</option>
         </select>
-      </div>
+      </label>
+      <p class="config-hint">Tahta senin tarafından gösterilir.</p>
     </div>
+
     <div class="setup-actions">
-      <button class="btn btn-primary" id="analyzeBtn">Analiz Et</button>
-      <button class="btn btn-ghost" id="sampleBtn">Örnek Parti Yükle</button>
+      <button class="btn btn-primary" id="analyzeBtn">Analiz et</button>
+      <button class="btn btn-ghost" id="sampleBtn">Örnek partiyi yükle</button>
     </div>
-    <div class="status-row" id="statusRow">
+
+    <div class="status-row" id="statusRow" aria-live="polite">
       <div id="statusLine">Hazırlanıyor…</div>
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
     </div>
-    <div class="error-msg" id="errorMsg"></div>
+    <div class="error-msg" id="errorMsg" role="alert"></div>
   </div>
 
-  <div class="review-layout" id="reviewLayout">
-    <div class="board-col">
-      <div class="board-frame">
-        <div class="board-mat">
-          <div class="frame-coord-row top" id="coordsTop"></div>
-          <div class="frame-coord-row bottom" id="coordsBottom"></div>
-          <div class="frame-coord-col left" id="coordsLeft"></div>
-          <div class="frame-coord-col right" id="coordsRight"></div>
-          <div class="board-outer">
-            <div id="board"></div>
-            <svg id="arrowOverlay" viewBox="0 0 480 480"></svg>
+  <section class="legend" aria-label="Hamle sınıfları">
+    <h2 class="legend-title">Hamleler nasıl işaretlenir?</h2>
+    <ul class="legend-list" id="legendList"></ul>
+  </section>
+
+  <footer class="note" id="mainFooter">
+    Değerlendirmeler Lichess, ChessDB ve tarayıcında çalışan Stockfish'ten gelir. Açılış adları Lichess'in açık açılış veritabanından alınır.
+  </footer>
+ </div>
+
+  <aside class="setup-preview" aria-label="Örnek inceleme">
+    <button class="preview-board-btn" id="previewBoardBtn" aria-label="Örnek partiyi analiz et">
+      <div class="board-frame preview-frame">
+        <div class="preview-board" id="previewBoard"></div>
+      </div>
+    </button>
+    <p class="preview-caption"><b>13.Rxd7!!</b> Morphy, Opera Partisi, 1858. Kalesini vererek mat ağını kuruyor. Tahtaya tıkla, partinin tamamını incele.</p>
+  </aside>
+</main>
+
+<!-- ============ İNCELEME EKRANI ============ -->
+<div class="review-layout" id="reviewLayout">
+  <header class="review-bar">
+    <button class="btn btn-ghost btn-sm" id="backToSetupBtn">
+      <svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>Yeni parti
+    </button>
+    <div class="game-info">
+      <div class="game-title" id="gameTitle"></div>
+      <div class="game-sub" id="gameSub"></div>
+    </div>
+  </header>
+
+  <div class="review-grid">
+    <section class="board-col" aria-label="Tahta">
+      <div class="player-bar" id="playerTop"></div>
+
+      <div class="board-row">
+        <div class="eval-bar" id="evalBar" role="img" aria-label="Değerlendirme">
+          <div class="eval-fill" id="evalFill"></div>
+          <span class="eval-label" id="evalLabel"></span>
+        </div>
+        <div class="board-frame">
+          <div class="board-mat">
+            <div class="frame-coord-row top" id="coordsTop"></div>
+            <div class="frame-coord-row bottom" id="coordsBottom"></div>
+            <div class="frame-coord-col left" id="coordsLeft"></div>
+            <div class="frame-coord-col right" id="coordsRight"></div>
+            <div class="board-outer">
+              <div id="board"></div>
+              <svg id="arrowOverlay" viewBox="0 0 480 480" aria-hidden="true"></svg>
+            </div>
           </div>
         </div>
       </div>
+
+      <div class="player-bar" id="playerBottom"></div>
+
       <div class="board-controls">
-        <button class="nav-btn" id="prevBtn" aria-label="Önceki hamle">◀</button>
+        <button class="nav-btn" id="firstBtn" aria-label="Başa dön" title="Başa dön (Home)"><svg aria-hidden="true"><use href="#i-first"/></svg></button>
+        <button class="nav-btn" id="prevBtn" aria-label="Önceki hamle" title="Önceki hamle (←)"><svg aria-hidden="true"><use href="#i-prev"/></svg></button>
         <span id="plyLabel">Başlangıç konumu</span>
-        <button class="nav-btn" id="nextBtn" aria-label="Sonraki hamle">▶</button>
-      </div>
-    </div>
-
-    <div class="side-col analysis-col">
-      <div class="info-card">
-        <button class="btn btn-ghost" id="backToSetupBtn" style="width: 100%;">🔙 Yeni Maç Analiz Et</button>
+        <button class="nav-btn" id="nextBtn" aria-label="Sonraki hamle" title="Sonraki hamle (→)"><svg aria-hidden="true"><use href="#i-next"/></svg></button>
+        <button class="nav-btn" id="lastBtn" aria-label="Sona git" title="Sona git (End)"><svg aria-hidden="true"><use href="#i-last"/></svg></button>
+        <button class="nav-btn nav-flip" id="flipBtn" aria-label="Tahtayı çevir" title="Tahtayı çevir (F)"><svg aria-hidden="true"><use href="#i-flip"/></svg></button>
       </div>
 
-      <!-- Açılış Teorisi Kartı -->
-      <div class="info-card" id="openingCard" style="display: none;">
-        <h3 class="info-card-title">📖 Açılış Teorisi</h3>
-        <div id="openingNameText" style="font-size: 14px; font-weight: 500; color: var(--text-primary); margin-top: 6px; line-height: 1.4;">—</div>
+      <div class="graph-card">
+        <svg id="evalGraph" role="img" aria-label="Parti boyunca avantaj grafiği. Bir noktaya tıklayarak o hamleye git."></svg>
+      </div>
+    </section>
+
+    <aside class="side-col analysis-col" aria-label="Analiz">
+      <div class="info-card comment-card" id="commentaryCard" aria-live="polite">
+        <div class="comment-head">
+          <span class="cls-badge" id="commBadge"></span>
+          <span class="comment-label" id="commLabel"></span>
+          <span class="comment-eval" id="commEval"></span>
+        </div>
+        <div class="comment-move" id="commTitle"></div>
+        <p class="comment-text" id="commText"></p>
+        <div class="comment-best" id="commBest"></div>
+        <div class="comment-pv hidden" id="commPvContainer">
+          <span class="comment-pv-label">Motorun devamı</span>
+          <p id="commPvText"></p>
+        </div>
+      </div>
+
+      <div class="info-card acc-card" id="accuracyCard">
+        <table class="acc-table">
+          <thead>
+            <tr>
+              <th scope="col"><span class="visually-hidden">Sınıf</span></th>
+              <th scope="col" class="acc-player"><span class="swatch swatch-w"></span><span id="accWhiteName">Beyaz</span></th>
+              <th scope="col" class="acc-player"><span class="swatch swatch-b"></span><span id="accBlackName">Siyah</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="acc-main">
+              <th scope="row">Doğruluk</th>
+              <td id="whiteAcc">—</td>
+              <td id="blackAcc">—</td>
+            </tr>
+          </tbody>
+          <tbody id="classCounts"></tbody>
+        </table>
       </div>
 
       <div class="info-card movelist-card">
-        <h3 class="info-card-title">📋 Hamle Listesi</h3>
+        <h2 class="info-card-title">Hamleler</h2>
         <div class="move-list" id="moveList"></div>
       </div>
-
-      <!-- Hamle Açıklama Kartı (Engine Commentary) -->
-      <div id="commentaryCard" class="info-card" style="display: none;">
-        <div class="flex items-center gap-2 mb-2">
-          <span id="commBadge" class="px-2 py-0.5 rounded text-xs font-bold flex items-center justify-center"></span>
-          <span id="commTitle" class="text-white font-semibold text-sm"></span>
-        </div>
-        <p id="commText" class="text-gray-400 text-xs leading-relaxed mb-3"></p>
-        <div id="commPvContainer" class="bg-[#111c2a] rounded p-2 border border-gray-900 hidden">
-          <span class="text-gray-500 text-[9px] uppercase font-bold block mb-1">En İyi Devam Yolu (Varyant):</span>
-          <p id="commPvText" class="font-mono text-xs text-gray-300 tracking-tight leading-relaxed"></p>
-        </div>
-      </div>
-
-      <div class="info-card" id="accuracyCard">
-        <h3 class="info-card-title">🎯 Doğruluk</h3>
-        <div class="accuracy-row">
-          <div class="accuracy-box"><span class="acc-label">Beyaz</span><span class="acc-value" id="whiteAcc">—</span></div>
-          <div class="accuracy-box"><span class="acc-label">Siyah</span><span class="acc-value" id="blackAcc">—</span></div>
-        </div>
-      </div>
-    </div>
+    </aside>
   </div>
-
-  <footer class="note" id="mainFooter">
-  </footer>
 </div>
 
 <script type="module" src="script.js"></script>

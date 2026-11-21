@@ -1,14 +1,18 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@0.13.4/chess.js';
-const CLASS_VAR = { 
-  genius: '--genius', 
-  sharp: '--sharp', 
-  optimum: '--optimum', 
-  optimum2: '--optimum2', 
-  flaw: '--flaw', 
-  fatal: '--fatal',
-  book: '--book', // Açılış hamlesi sınıfı eklendi
-  unknown: '--text-secondary' // Analiz verisi alınamayan pozisyonlar için
+// Hamle sınıfları: etiket, simge (satranç notasyonundaki !!, !, ?, ?? işaretleri), renk ve açıklama.
+// Renkler style.css'teki --genius, --sharp ... değişkenleriyle aynıdır.
+const BOOK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 3h12a1 1 0 0 1 1 1v13H7a1 1 0 1 0 0 2h12v2H7a3 3 0 0 1-3-3V5a2 2 0 0 1 2-2Z"/></svg>';
+const CLASS_META = {
+  genius:   { label: 'Parlak hamle',   symbol: '!!', color: '#2BD9E8', desc: 'Bulunması zor, fedakârlık içeren ve tek doğru olan hamle.' },
+  sharp:    { label: 'Keskin hamle',   symbol: '!',  color: '#5C9BF5', desc: 'Tek iyi devam buydu; diğer hamleler avantajı kaçırırdı.' },
+  optimum:  { label: 'En iyi hamle',   symbol: '★',  color: '#3DBE7A', desc: 'Motorun önerisiyle aynı ya da ona çok yakın, güçlü bir seçim.' },
+  optimum2: { label: 'İyi hamle',      symbol: '✓',  color: '#93B85A', desc: 'Konumu bozmayan makul bir hamle; daha güçlü bir alternatif vardı.' },
+  book:     { label: 'Açılış teorisi', symbol: '',   symbolHtml: BOOK_ICON, color: '#B08D5E', desc: 'Bilinen açılış teorisinde yer alan bir hamle.' },
+  flaw:     { label: 'Hatalı hamle',   symbol: '?',  color: '#F0B03F', desc: 'Bu hamle avantajın bir kısmını kaybettirdi.' },
+  fatal:    { label: 'Ciddi hata',     symbol: '??', color: '#EE5A52', desc: 'Bu hamle pozisyonu ciddi şekilde kötüleştirdi.' },
+  unknown:  { label: 'Analiz yok',     symbol: '–',  color: '#6B7588', desc: 'Bu pozisyon için analiz verisi alınamadı (ağ hatası olabilir).' }
 };
+const CLASS_ORDER = ['genius', 'sharp', 'optimum', 'optimum2', 'book', 'flaw', 'fatal'];
 const FALLBACK_DEPTH = 13;
 const pgnInput = document.getElementById('pgnInput');
 const commentaryCard = document.getElementById('commentaryCard');
@@ -28,12 +32,16 @@ const tabFileBtn = document.getElementById('tabFileBtn');
   tabFileBtn.addEventListener('click', () => {
     tabFileBtn.classList.add('active');
     tabTextBtn.classList.remove('active');
+    tabFileBtn.setAttribute('aria-selected', 'true');
+    tabTextBtn.setAttribute('aria-selected', 'false');
     contentFile.classList.add('active');
     contentText.classList.remove('active');
   });
   tabTextBtn.addEventListener('click', () => {
     tabTextBtn.classList.add('active');
     tabFileBtn.classList.remove('active');
+    tabTextBtn.setAttribute('aria-selected', 'true');
+    tabFileBtn.setAttribute('aria-selected', 'false');
     contentText.classList.add('active');
     contentFile.classList.remove('active');
   });
@@ -214,7 +222,15 @@ sampleBtn.addEventListener('click', () => {
 function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('active'); }
 function clearError() { errorMsg.classList.remove('active'); errorMsg.textContent = ''; }
 function sanitizePgn(raw) {
-  let s = raw;
+  let s = raw.replace(/\r\n?/g, '\n');
+  // chess.js, başlık satırları ([White "..."] vb.) ile hamleler arasında boş satır ister.
+  // Yapıştırılan PGN'lerde bu boş satır çoğu zaman yok; o zaman PGN okunamıyor, yedek
+  // ayrıştırıcıya düşülüyor ve oyuncu adları gibi başlık bilgileri kayboluyordu.
+  const lines = s.split('\n');
+  let hi = 0;
+  while (hi < lines.length && /^\s*\[.*\]\s*$/.test(lines[hi])) hi++;
+  if (hi > 0 && hi < lines.length && lines[hi].trim() !== '') lines.splice(hi, 0, '');
+  s = lines.join('\n');
   let prev;
   do { prev = s; s = s.replace(/\([^()]*\)/g, ''); } while (s !== prev);
   s = s.replace(/\{[^}]*\}/g, '');
@@ -559,64 +575,6 @@ function computeAccuracies() {
   return { white: avg(wAccs), black: avg(bAccs) };
 }
 
-function renderMoveList() {
-  moveListEl.innerHTML = '';
-  const total = state.perMove.length;
-  const fullMoves = Math.ceil(total / 2);
-  for (let k = 0; k < fullMoves; k++) {
-    const whiteIdx = k * 2;
-    const blackIdx = k * 2 + 1;
-    const row = document.createElement('div');
-    row.className = 'move-row';
-    
-    const num = document.createElement('span');
-    num.className = 'move-num';
-    num.textContent = (k + 1) + '.';
-    row.appendChild(num);
-    
-    // BEYAZ HAMLE CHIP
-    const wMove = state.perMove[whiteIdx];
-    const wChip = document.createElement('button');
-    // Renklendirme sınıflarını (mv-optimum vb.) kaldırıp sadece temiz bir buton oluşturuyoruz
-    wChip.className = 'move-chip' + (wMove ? '' : ' empty');
-    if (wMove) {
-      wChip.textContent = wMove.san;
-      wChip.dataset.ply = String(whiteIdx + 1);
-      wChip.addEventListener('click', () => goToPly(whiteIdx + 1));
-    }
-    row.appendChild(wChip);
-    
-    // SİYAH HAMLE CHIP
-    const bMove = state.perMove[blackIdx];
-    const bChip = document.createElement('button');
-    bChip.className = 'move-chip' + (bMove ? '' : ' empty');
-    if (bMove) {
-      bChip.textContent = bMove.san;
-      bChip.dataset.ply = String(blackIdx + 1);
-      bChip.addEventListener('click', () => goToPly(blackIdx + 1));
-    }
-    row.appendChild(bChip);
-    
-    moveListEl.appendChild(row);
-  }
-}
-let state = null;
-let currentPly = 0;
-let boardFlipped = false;
-let perspectiveColor = 'auto';
-function updatePerspectiveFromSelect() {
-  perspectiveColor = colorSelect.value;
-  boardFlipped = perspectiveColor === 'black';
-}
-colorSelect.addEventListener('change', () => {
-  updatePerspectiveFromSelect();
-  if (state) { goToPly(currentPly); }
-});
-updatePerspectiveFromSelect();
-
-
-
-
 async function runAnalysis() {
     clearError();
     
@@ -782,41 +740,7 @@ async function runAnalysis() {
         state = { headers: parsed.headers, moves: parsed.moves, fens, evals, bestMoveSanAt, perMove, detectedOpening };
         currentPly = fens.length - 1;
 
-        renderMoveList();
-        
-        // Arayüz geçişleri
-        document.getElementById('mainHeader').style.display = 'none';
-        mainSetupPanel.style.display = 'none';
-        document.getElementById('mainFooter').style.display = 'none';
-        reviewLayout.classList.add('active');
-        
-        // Dinamik Açılış İsmi Kartını Göster
-        const openingCard = document.getElementById('openingCard');
-        const openingNameText = document.getElementById('openingNameText');
-        const hdr = state.headers || {};
-        const detected = state.detectedOpening;
-        if (openingCard && openingNameText && (hdr.Opening || hdr.ECO || detected)) {
-          const name = hdr.Opening || (detected && detected.name) || "Bilinmeyen Açılış Teorisi";
-          const ecoCode = hdr.ECO || (detected && detected.eco);
-          const eco = ecoCode ? ` [${ecoCode}]` : "";
-          openingNameText.textContent = name + eco;
-          openingCard.style.display = 'block';
-        } else if (openingCard) {
-          openingCard.style.display = 'none';
-        }
-
-        // Doğruluk Oranlarını Kartlara Yazdır
-        const accuracies = computeAccuracies();
-        if (accuracies.white !== null && accuracies.black !== null) {
-          whiteAccEl.textContent = '%' + accuracies.white.toFixed(1);
-          blackAccEl.textContent = '%' + accuracies.black.toFixed(1);
-        } else {
-          whiteAccEl.textContent = '—';
-          blackAccEl.textContent = '—';
-        }
-
-       goToPly(currentPly);
-        syncAnalysisHeight();
+        showReview();
     } catch (err) {
         console.error("Analiz hatası:", err);
         showError('Analiz edilemedi: ' + err.message);
@@ -825,6 +749,240 @@ async function runAnalysis() {
         statusRow.classList.remove('active');
     }
 }
+// =========================================================
+// ARAYÜZ — inceleme ekranı
+// =========================================================
+const setupView = document.getElementById('setupView');
+const evalBarEl = document.getElementById('evalBar');
+const evalFillEl = document.getElementById('evalFill');
+const evalLabelEl = document.getElementById('evalLabel');
+const evalGraphEl = document.getElementById('evalGraph');
+const playerTopEl = document.getElementById('playerTop');
+const playerBottomEl = document.getElementById('playerBottom');
+const firstBtn = document.getElementById('firstBtn');
+const lastBtn = document.getElementById('lastBtn');
+const flipBtn = document.getElementById('flipBtn');
+const gameTitleEl = document.getElementById('gameTitle');
+const gameSubEl = document.getElementById('gameSub');
+const commLabel = document.getElementById('commLabel');
+const commEval = document.getElementById('commEval');
+const commBest = document.getElementById('commBest');
+const classCountsEl = document.getElementById('classCounts');
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// Hamle sınıfı rozeti (efsane, yorum kartı, tablo ve tahtada aynı görünüm)
+function fillBadge(el, cls) {
+  const meta = CLASS_META[cls] || CLASS_META.unknown;
+  el.style.setProperty('--cls', meta.color);
+  if (meta.symbolHtml) el.innerHTML = meta.symbolHtml;
+  else el.textContent = meta.symbol;
+  el.title = meta.label;
+  return el;
+}
+function makeBadge(cls, extraClass = '') {
+  const el = document.createElement('span');
+  el.className = 'cls-badge ' + extraClass;
+  return fillBadge(el, cls);
+}
+
+// Giriş ekranındaki "Hamleler nasıl işaretlenir?" listesi
+function renderLegend() {
+  const list = document.getElementById('legendList');
+  if (!list) return;
+  list.innerHTML = '';
+  for (const cls of CLASS_ORDER) {
+    const li = document.createElement('li');
+    li.appendChild(makeBadge(cls));
+    const b = document.createElement('b');
+    b.textContent = CLASS_META[cls].label;
+    li.appendChild(b);
+    li.title = CLASS_META[cls].desc;
+    list.appendChild(li);
+  }
+}
+renderLegend();
+
+// Giriş ekranının sağındaki örnek pozisyon: Opera Partisi, 13.Rxd7!!
+function renderPreviewBoard() {
+  const el = document.getElementById('previewBoard');
+  if (!el) return;
+  const board = new Chess('3rkb1r/p2Rqppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/2K4R b k - 0 13').board();
+  el.innerHTML = '';
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const sq = String.fromCharCode(97 + c) + (8 - r);
+      const div = document.createElement('div');
+      div.className = 'sq ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
+      if (sq === 'd1' || sq === 'd7') {
+        div.classList.add(sq === 'd7' ? 'hl-to' : 'hl-from');
+        div.style.setProperty('--hl-color', CLASS_META.genius.color);
+      }
+      const p = board[r][c];
+      if (p) {
+        const g = document.createElement('div');
+        g.className = `piece-graphic ${p.type}-${p.color}`;
+        div.appendChild(g);
+      }
+      if (sq === 'd7') div.appendChild(makeBadge('genius', 'board-badge'));
+      el.appendChild(div);
+    }
+  }
+}
+renderPreviewBoard();
+const previewBoardBtn = document.getElementById('previewBoardBtn');
+if (previewBoardBtn) previewBoardBtn.addEventListener('click', () => {
+  pgnInput.value = SAMPLE_PGN;
+  tabTextBtn.click();
+  runAnalysis();
+});
+
+function playerName(color) {
+  const h = (state && state.headers) || {};
+  const name = color === 'w' ? h.White : h.Black;
+  return name && name !== '?' ? name : (color === 'w' ? 'Beyaz' : 'Siyah');
+}
+function playerElo(color) {
+  const h = (state && state.headers) || {};
+  const elo = color === 'w' ? h.WhiteElo : h.BlackElo;
+  return elo && elo !== '?' ? elo : '';
+}
+
+// Üst bar: oyuncular, sonuç, açılış, turnuva
+function renderGameInfo() {
+  const h = state.headers || {};
+  gameTitleEl.textContent = `${playerName('w')} – ${playerName('b')}`;
+  if (h.Result && h.Result !== '*') {
+    const chip = document.createElement('span');
+    chip.className = 'result-chip';
+    chip.textContent = h.Result;
+    gameTitleEl.appendChild(chip);
+  }
+  const det = state.detectedOpening;
+  const opening = h.Opening || (det && det.name) || '';
+  const eco = h.ECO || (det && det.eco) || '';
+  const parts = [];
+  if (opening) parts.push(eco ? `${opening} (${eco})` : opening);
+  if (h.Event && h.Event !== '?') parts.push(h.Event);
+  if (h.Date && !h.Date.startsWith('?')) parts.push(h.Date.replace(/\.\?\?/g, ''));
+  gameSubEl.textContent = parts.join(', ');
+}
+
+// Tahtanın üstündeki ve altındaki oyuncu şeritleri (tahta çevrilince yer değiştirir)
+function renderPlayers() {
+  const acc = state.accuracies || {};
+  const fill = (el, color) => {
+    el.innerHTML = '';
+    const sw = document.createElement('span');
+    sw.className = 'swatch ' + (color === 'w' ? 'swatch-w' : 'swatch-b');
+    const name = document.createElement('span');
+    name.className = 'player-name';
+    const elo = playerElo(color);
+    name.textContent = playerName(color) + (elo ? ` (${elo})` : '');
+    const a = document.createElement('span');
+    a.className = 'player-acc';
+    const v = color === 'w' ? acc.white : acc.black;
+    a.textContent = v !== null && v !== undefined ? `%${v.toFixed(1)}` : '';
+    a.title = 'Doğruluk';
+    el.append(sw, name, a);
+  };
+  fill(playerTopEl, boardFlipped ? 'w' : 'b');
+  fill(playerBottomEl, boardFlipped ? 'b' : 'w');
+}
+
+// Doğruluk + hangi sınıftan kaç hamle
+function renderAccuracy() {
+  const acc = state.accuracies;
+  whiteAccEl.textContent = acc.white !== null ? '%' + acc.white.toFixed(1) : '—';
+  blackAccEl.textContent = acc.black !== null ? '%' + acc.black.toFixed(1) : '—';
+  document.getElementById('accWhiteName').textContent = playerName('w');
+  document.getElementById('accBlackName').textContent = playerName('b');
+
+  const counts = { w: {}, b: {} };
+  for (const m of state.perMove) counts[m.color][m.cls] = (counts[m.color][m.cls] || 0) + 1;
+  classCountsEl.innerHTML = '';
+  for (const cls of CLASS_ORDER) {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.scope = 'row';
+    th.appendChild(makeBadge(cls));
+    th.appendChild(document.createTextNode(CLASS_META[cls].label));
+    tr.appendChild(th);
+    for (const c of ['w', 'b']) {
+      const td = document.createElement('td');
+      const n = counts[c][cls] || 0;
+      td.textContent = n;
+      if (n > 0) td.className = 'has';
+      tr.appendChild(td);
+    }
+    classCountsEl.appendChild(tr);
+  }
+}
+
+function renderMoveList() {
+  moveListEl.innerHTML = '';
+  const total = state.perMove.length;
+  for (let k = 0; k < Math.ceil(total / 2); k++) {
+    const row = document.createElement('div');
+    row.className = 'move-row';
+    const num = document.createElement('span');
+    num.className = 'move-num';
+    num.textContent = (k + 1) + '.';
+    row.appendChild(num);
+    for (const idx of [k * 2, k * 2 + 1]) {
+      const mv = state.perMove[idx];
+      const chip = document.createElement('button');
+      chip.className = 'move-chip' + (mv ? ' cls-' + mv.cls : ' empty');
+      if (mv) {
+        const meta = CLASS_META[mv.cls] || CLASS_META.unknown;
+        chip.style.setProperty('--cls', meta.color);
+        chip.dataset.ply = String(idx + 1);
+        chip.title = meta.label;
+        const san = document.createElement('span');
+        san.className = 'mv-san';
+        san.textContent = mv.san;
+        chip.appendChild(san);
+        // Liste kalabalık olmasın diye "en iyi" ve "iyi" hamlelerde simge gösterilmez
+        if (!['optimum', 'optimum2'].includes(mv.cls)) {
+          const sym = document.createElement('span');
+          sym.className = 'mv-sym';
+          if (meta.symbolHtml) sym.innerHTML = meta.symbolHtml; else sym.textContent = meta.symbol;
+          chip.appendChild(sym);
+        }
+        chip.addEventListener('click', () => goToPly(idx + 1));
+      } else {
+        chip.tabIndex = -1;
+      }
+      row.appendChild(chip);
+    }
+    moveListEl.appendChild(row);
+  }
+}
+
+let state = null;
+let currentPly = 0;
+let boardFlipped = false;
+let perspectiveColor = 'auto';
+function updatePerspectiveFromSelect() {
+  perspectiveColor = colorSelect.value;
+  boardFlipped = perspectiveColor === 'black';
+}
+colorSelect.addEventListener('change', updatePerspectiveFromSelect);
+updatePerspectiveFromSelect();
+
+function showReview() {
+  state.accuracies = computeAccuracies();
+  setupView.classList.add('is-hidden');
+  reviewLayout.classList.add('active');
+  renderGameInfo();
+  renderMoveList();
+  renderAccuracy();
+  renderPlayers();
+  goToPly(currentPly);
+  syncAnalysisHeight();
+  window.scrollTo(0, 0);
+}
+
+// Masaüstünde sağ sütun tahta sütunuyla aynı yükseklikte olsun (hamle listesi kalan yeri doldurur)
 function syncAnalysisHeight() {
   const boardColEl = document.querySelector('.board-col');
   const sideColEl = document.querySelector('.side-col.analysis-col');
@@ -835,18 +993,15 @@ function syncAnalysisHeight() {
   }
   sideColEl.style.height = boardColEl.offsetHeight + 'px';
 }
-window.addEventListener('resize', syncAnalysisHeight);
+window.addEventListener('resize', () => { syncAnalysisHeight(); if (state) renderEvalGraph(); });
 if (window.ResizeObserver) {
-  const boardResizeObserver = new ResizeObserver(() => syncAnalysisHeight());
-  window.addEventListener('DOMContentLoaded', () => {
-    const boardColEl = document.querySelector('.board-col');
-    if (boardColEl) boardResizeObserver.observe(boardColEl);
-  });
+  const ro = new ResizeObserver(() => { syncAnalysisHeight(); if (state) renderEvalGraph(); });
+  ro.observe(document.querySelector('.board-col'));
 }
 
-function renderBoard(fen, highlightTo, evaluationCls) {
-  const g = new Chess(fen);
-  const board = g.board();
+function renderBoard(fen, move) {
+  const board = new Chess(fen).board();
+  const meta = move ? (CLASS_META[move.cls] || CLASS_META.unknown) : null;
   boardEl.innerHTML = '';
   for (let visRow = 0; visRow < 8; visRow++) {
     for (let visCol = 0; visCol < 8; visCol++) {
@@ -855,207 +1010,247 @@ function renderBoard(fen, highlightTo, evaluationCls) {
       const cellPiece = board[row][col];
       const sqName = String.fromCharCode(97 + col) + (8 - row);
       const div = document.createElement('div');
-      const isLight = (row + col) % 2 === 0;
-      div.className = 'sq ' + (isLight ? 'light' : 'dark');
-      div.style.position = 'relative'; // Rozetin sağ üstte hizalanması için gerekli
-      
+      div.className = 'sq ' + ((row + col) % 2 === 0 ? 'light' : 'dark');
+      if (move && (sqName === move.from || sqName === move.to)) {
+        div.classList.add(sqName === move.to ? 'hl-to' : 'hl-from');
+        div.style.setProperty('--hl-color', meta.color);
+      }
       if (cellPiece) {
         const graphic = document.createElement('div');
         graphic.className = `piece-graphic ${cellPiece.type}-${cellPiece.color}`;
         div.appendChild(graphic);
       }
-
-       if (sqName === highlightTo && evaluationCls) {
-        const badge = document.createElement('div');
-        badge.style.position = 'absolute';
-        badge.style.top = '2px';           // Sağ üst köşeye daha yakın hizalama
-        badge.style.right = '2px';
-        badge.style.width = '24px';        // Genişlik büyütüldü (eski: 18px)
-        badge.style.height = '24px';       // Yükseklik büyütüldü (eski: 18px)
-        badge.style.borderRadius = '50%';
-        badge.style.display = 'flex';
-        badge.style.alignItems = 'center';
-        badge.style.justifyContent = 'center';
-        badge.style.fontSize = '13px';     // Yazı/Emoji boyutu büyütüldü (eski: 10px)
-        badge.style.fontWeight = 'bold';
-        badge.style.zIndex = '10';
-        badge.style.boxShadow = '0 2px 4px rgba(0,0,0,0.4)';
-        badge.style.border = '2px solid white'; // Çerçeve kalınlığı artırıldı
-
-        // Sitenize göre özelleştirebileceğiniz sembol ve renk ayarları
-        const badgeConfig = {
-          book:     { bg: '#5c6bc0', color: '#ffffff', symbol: '📖' }, // Kitap Hamlesi / Book Move (Yeni)
-          genius:   { bg: '#00bcd4', color: '#ffffff', symbol: '💎' }, // Çok İyi Hamle / Brilliant
-          sharp:    { bg: '#81b64c', color: '#ffffff', symbol: '⭐' }, // En İyi Hamle / Great
-          optimum:  { bg: '#8bc34a', color: '#ffffff', symbol: '✓' }, // İyi Hamle / Best
-          optimum2: { bg: '#f3ae16', color: '#ffffff', symbol: '⚠️' }, // Şüpheli hamle
-          flaw:     { bg: '#fa412d', color: '#ffffff', symbol: '❓' }, // Kötü Hamle / Inaccuracy
-          fatal:    { bg: '#ca3431', color: '#ffffff', symbol: '❌' }, // Çok Kötü Hamle / Blunder
-          unknown:  { bg: '#5a6472', color: '#ffffff', symbol: '—' }  // Analiz verisi alınamadı
-        };
-
-        const config = badgeConfig[evaluationCls];
-        if (config) {
-          badge.style.backgroundColor = config.bg;
-          badge.style.color = config.color;
-          badge.textContent = config.symbol; // Buraya dilediğiniz emoji, harf veya karakteri yazabilirsiniz
-          div.appendChild(badge);
-        }
-      }
-
+      if (move && sqName === move.to) div.appendChild(makeBadge(move.cls, 'board-badge'));
       boardEl.appendChild(div);
     }
   }
   renderCoordLabels();
 }
 
-
 function renderCoordLabels() {
-  if (!coordsTop) return;
-  const files = [];
-  const ranks = [];
-  for (let visCol = 0; visCol < 8; visCol++) {
-    const col = boardFlipped ? 7 - visCol : visCol;
-    files.push(String.fromCharCode(97 + col));
-  }
-  for (let visRow = 0; visRow < 8; visRow++) {
-    const row = boardFlipped ? 7 - visRow : visRow;
-    ranks.push(8 - row);
+  const files = [], ranks = [];
+  for (let v = 0; v < 8; v++) {
+    files.push(String.fromCharCode(97 + (boardFlipped ? 7 - v : v)));
+    ranks.push(8 - (boardFlipped ? 7 - v : v));
   }
   const buildSpans = arr => arr.map(v => `<span>${v}</span>`).join('');
-  coordsTop.innerHTML = buildSpans(files);
-  coordsBottom.innerHTML = buildSpans(files);
-  coordsLeft.innerHTML = buildSpans(ranks);
-  coordsRight.innerHTML = buildSpans(ranks);
+  coordsTop.innerHTML = coordsBottom.innerHTML = buildSpans(files);
+  coordsLeft.innerHTML = coordsRight.innerHTML = buildSpans(ranks);
 }
+
+function fileIndex(sq) { return sq.charCodeAt(0) - 97; }
+function rankIndexFromTop(sq) { return 8 - parseInt(sq[1], 10); }
 function squareToXY(sqName) {
   const cell = 60;
-  let col = fileIndex(sqName);
-  let row = rankIndexFromTop(sqName);
+  let col = fileIndex(sqName), row = rankIndexFromTop(sqName);
   if (boardFlipped) { col = 7 - col; row = 7 - row; }
   return { x: col * cell + cell / 2, y: row * cell + cell / 2 };
 }
+
+// Motorun önerdiği hamle oku. Ok başı elle çizilir: eskiden SVG marker çizgi kalınlığıyla
+// büyüdüğü için ok hedef karenin bir kare ötesine taşıyordu.
 function drawArrow(fromSq, toSq, color) {
   arrowOverlay.innerHTML = '';
   if (!fromSq || !toSq) return;
   const p1 = squareToXY(fromSq), p2 = squareToXY(toSq);
-  const ns = 'http://www.w3.org/2000/svg';
-  const markerId = 'arrowhead-glow';
-  const defs = document.createElementNS(ns, 'defs');
-  const marker = document.createElementNS(ns, 'marker');
-  marker.setAttribute('id', markerId);
-  marker.setAttribute('markerWidth', '8'); marker.setAttribute('markerHeight', '8');
-  marker.setAttribute('refX', '4'); marker.setAttribute('refY', '4'); marker.setAttribute('orient', 'auto');
-  const poly = document.createElementNS(ns, 'polygon');
-  poly.setAttribute('points', '0,0 8,4 0,8'); poly.setAttribute('fill', color);
-  marker.appendChild(poly); defs.appendChild(marker); arrowOverlay.appendChild(defs);
-  const line = document.createElementNS(ns, 'line');
-  line.setAttribute('x1', p1.x); line.setAttribute('y1', p1.y);
-  line.setAttribute('x2', p2.x); line.setAttribute('y2', p2.y);
-  line.setAttribute('stroke', color); line.setAttribute('stroke-width', '7');
-  line.setAttribute('stroke-linecap', 'round'); line.setAttribute('opacity', '0.9');
-  line.setAttribute('marker-end', `url(#${markerId})`);
-  arrowOverlay.appendChild(line);
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  const head = 20, half = 13, tipInset = 6;
+  const tipX = p2.x - ux * tipInset, tipY = p2.y - uy * tipInset;
+  const baseX = tipX - ux * head, baseY = tipY - uy * head;
+  const startX = p1.x + ux * 8, startY = p1.y + uy * 8;
+  const g = document.createElementNS(SVG_NS, 'g');
+  g.setAttribute('opacity', '0.85');
+  const line = document.createElementNS(SVG_NS, 'line');
+  line.setAttribute('x1', startX); line.setAttribute('y1', startY);
+  line.setAttribute('x2', baseX); line.setAttribute('y2', baseY);
+  line.setAttribute('stroke', color); line.setAttribute('stroke-width', '10');
+  line.setAttribute('stroke-linecap', 'round');
+  const poly = document.createElementNS(SVG_NS, 'polygon');
+  poly.setAttribute('points', [
+    `${tipX},${tipY}`,
+    `${baseX - uy * half},${baseY + ux * half}`,
+    `${baseX + uy * half},${baseY - ux * half}`
+  ].join(' '));
+  poly.setAttribute('fill', color);
+  g.append(line, poly);
+  arrowOverlay.appendChild(g);
 }
-const CLS_INFO = {
-  genius:   { label: 'Parlak Hamle',    desc: 'Bulunması çok zor, fedakarlık içeren mükemmel bir hamle.' },
-  sharp:    { label: 'Keskin Hamle',    desc: 'Tek doğru devam buydu; alternatifler avantajı elden kaçırırdı.' },
-  optimum:  { label: 'En İyi Hamle',    desc: 'Motorun önerisiyle aynı veya ona çok yakın, güçlü bir seçim.' },
-  optimum2: { label: 'İyi Hamle',       desc: 'Konumu bozmayan makul bir hamle, ancak daha güçlü bir alternatif vardı.' },
-  flaw:     { label: 'Hatalı Hamle',    desc: 'Bu hamle avantajın bir kısmının elden kaçmasına neden oldu.' },
-  fatal:    { label: 'Ciddi Hata',      desc: 'Bu hamle pozisyonu ciddi şekilde zayıflattı.' },
-  book:     { label: 'Açılış Teorisi',  desc: 'Bilinen açılış teorisine uygun, standart bir hamle.' },
-  unknown:  { label: 'Analiz Yok',      desc: 'Bu pozisyon için motor/analiz verisi alınamadı (ağ hatası olabilir).' }
-};
-function updateCommentary(move, prevFen) {
-  if (!commentaryCard) return;
+
+// Bir ply için Beyaz'ın bakış açısından değerlendirme (eksikse en yakın önceki değer)
+function evalAtPly(ply) {
+  for (let i = ply; i >= 0; i--) if (state.evals[i] !== null && state.evals[i] !== undefined) return state.evals[i];
+  return 0;
+}
+// Beyaz'ın kazanma yüzdesi (0–100); mat görünüyorsa tam dolu
+function whiteWinPercent(cp) {
+  if (cp >= 8000) return 100;
+  if (cp <= -8000) return 0;
+  return cpToWinPercent(cp);
+}
+function formatScoreShort(cp) {
+  if (Math.abs(cp) >= 8000) return 'M';
+  if (Math.abs(cp) >= TB_WIN_CP) return 'TB';
+  return (Math.abs(cp) / 100).toFixed(1);
+}
+
+function renderEvalBar(cp) {
+  const pct = whiteWinPercent(cp);
+  evalBarEl.classList.toggle('flipped', boardFlipped);
+  evalFillEl.style.height = pct.toFixed(1) + '%';
+  evalLabelEl.textContent = formatScoreShort(cp);
+  evalLabelEl.className = 'eval-label ' + (cp >= 0 ? 'on-white' : 'on-black');
+  evalBarEl.setAttribute('aria-label', 'Değerlendirme: ' + formatScore(cp));
+}
+
+// Avantaj grafiği: alttan dolan açık renk alan Beyaz'ın kazanma şansı.
+// Hatalı ve ciddi hata hamleleri noktayla işaretlenir; tıklanınca o hamleye gidilir.
+function renderEvalGraph() {
+  if (!state || !evalGraphEl) return;
+  const W = Math.max(200, Math.round(evalGraphEl.clientWidth || 600));
+  const H = 96, pad = 6;
+  const n = state.fens.length;
+  const x = i => (n > 1 ? (i / (n - 1)) * W : 0);
+  const y = i => pad + (1 - whiteWinPercent(evalAtPly(i)) / 100) * (H - 2 * pad);
+  evalGraphEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  let d = `M0,${H} `;
+  for (let i = 0; i < n; i++) d += `L${x(i).toFixed(1)},${y(i).toFixed(1)} `;
+  d += `L${W},${H} Z`;
+  const dots = state.perMove.map((m, i) => (m.cls === 'fatal' || m.cls === 'flaw' || m.cls === 'genius')
+    ? `<circle class="g-dot" cx="${x(i + 1).toFixed(1)}" cy="${y(i + 1).toFixed(1)}" r="4" fill="${CLASS_META[m.cls].color}"><title>${Math.ceil((i + 1) / 2)}${m.color === 'w' ? '.' : '...'} ${m.san}: ${CLASS_META[m.cls].label}</title></circle>`
+    : '').join('');
+  evalGraphEl.innerHTML =
+    `<rect class="g-black" x="0" y="0" width="${W}" height="${H}"/>` +
+    `<path class="g-white" d="${d}"/>` +
+    `<line class="g-mid" x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}"/>` +
+    `<line class="g-cursor" x1="${x(currentPly)}" y1="0" x2="${x(currentPly)}" y2="${H}"/>` +
+    dots;
+}
+evalGraphEl.addEventListener('click', (e) => {
+  if (!state) return;
+  const rect = evalGraphEl.getBoundingClientRect();
+  const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  goToPly(Math.round(ratio * (state.fens.length - 1)));
+});
+
+function moveNumberLabel(ply, color) {
+  const n = Math.ceil(ply / 2);
+  return color === 'w' ? `${n}.` : `${n}...`;
+}
+
+function updateCommentary(move, ply) {
+  const prevFen = ply > 0 ? state.fens[ply - 1] : null;
+  commPvContainer.classList.add('hidden');
+  commBest.textContent = '';
   if (!move) {
-    commentaryCard.style.display = 'none';
+    commentaryCard.style.removeProperty('--cls');
+    commBadge.textContent = '';
+    commLabel.textContent = 'Başlangıç konumu';
+    commEval.textContent = formatScore(evalAtPly(0));
+    commTitle.textContent = '';
+    commText.textContent = 'Hamleler arasında ← → tuşlarıyla, listeden ya da aşağıdaki grafiğe tıklayarak gezinebilirsin.';
     return;
   }
-  const info = CLS_INFO[move.cls] || { label: move.cls, desc: '' };
-  commentaryCard.style.display = 'block';
-  if (commBadge) {
-    commBadge.textContent = info.label;
-    commBadge.style.background = `var(${CLASS_VAR[move.cls]})`;
-    commBadge.style.color = '#0b0f19';
+  const meta = CLASS_META[move.cls] || CLASS_META.unknown;
+  commentaryCard.style.setProperty('--cls', meta.color);
+  fillBadge(commBadge, move.cls);
+  commLabel.textContent = meta.label;
+  commEval.textContent = move.evalBefore !== null && move.evalAfter !== null
+    ? `${formatScore(move.evalBefore)} → ${formatScore(move.evalAfter)}`
+    : '';
+  commTitle.textContent = `${moveNumberLabel(ply, move.color)} ${move.san}`;
+  commText.textContent = meta.desc;
+  const isGood = ['optimum', 'genius', 'sharp', 'book'].includes(move.cls);
+  if (!isGood && move.bestSan && move.bestSan !== move.san) {
+    commBest.append('Daha iyisi: ');
+    const b = document.createElement('b');
+    b.textContent = move.bestSan;
+    commBest.appendChild(b);
   }
-  if (commTitle) commTitle.textContent = `${move.san}  (${formatScore(move.evalAfter)})`;
-  if (commText) commText.textContent = info.desc;
-  const showPv = !!move.pv && !['optimum', 'genius', 'book'].includes(move.cls);
-  if (commPvContainer && commPvText) {
-    if (showPv) {
-      commPvText.textContent = formatPv(prevFen, move.pv);
+  if (!isGood && move.pv && prevFen) {
+    const pv = formatPv(prevFen, move.pv);
+    if (pv) {
+      commPvText.textContent = pv;
       commPvContainer.classList.remove('hidden');
-    } else {
-      commPvContainer.classList.add('hidden');
     }
   }
 }
+
 function goToPly(ply) {
+  if (!state) return;
   currentPly = Math.max(0, Math.min(state.fens.length - 1, ply));
   const fen = state.fens[currentPly];
   const move = currentPly > 0 ? state.perMove[currentPly - 1] : null;
-  const prevFen = currentPly > 0 ? state.fens[currentPly - 1] : null;
-  renderBoard(fen, move ? move.to : null, move ? move.cls : null);
-  updateCommentary(move, prevFen);
-  if (currentPly === 0) {
-    plyLabel.textContent = 'Başlangıç Konumu';
-    arrowOverlay.innerHTML = '';
+  renderBoard(fen, move);
+  updateCommentary(move, currentPly);
+  renderEvalBar(evalAtPly(currentPly));
+  renderEvalGraph();
+
+  arrowOverlay.innerHTML = '';
+  if (!move) {
+    plyLabel.textContent = 'Başlangıç konumu';
   } else {
-    const moveNumber = Math.ceil(currentPly / 2);
-    const colorLabel = move.color === 'w' ? 'Beyaz' : 'Siyah';
-    plyLabel.textContent = `${moveNumber}. ${colorLabel}: ${move.san}`;
-    if (move.cls !== 'optimum' && move.cls !== 'genius' && move.bestSan && move.bestSan !== move.san) {
-      const g = new Chess(prevFen);
-      const verboseMoves = g.moves({ verbose: true });
-      const engineBestMoveObj = verboseMoves.find(mv => mv.san === move.bestSan);
-      if (engineBestMoveObj) drawArrow(engineBestMoveObj.from, engineBestMoveObj.to, 'var(--optimum)');
-      else arrowOverlay.innerHTML = '';
-    } else {
-      arrowOverlay.innerHTML = '';
+    plyLabel.textContent = `${moveNumberLabel(currentPly, move.color)} ${move.san}`;
+    const isGood = ['optimum', 'genius', 'sharp', 'book'].includes(move.cls);
+    if (!isGood && move.bestSan && move.bestSan !== move.san) {
+      const best = new Chess(state.fens[currentPly - 1]).moves({ verbose: true }).find(mv => mv.san === move.bestSan);
+      if (best) drawArrow(best.from, best.to, CLASS_META.optimum.color);
     }
   }
-  prevBtn.disabled = currentPly === 0;
-  nextBtn.disabled = currentPly === state.fens.length - 1;
+  firstBtn.disabled = prevBtn.disabled = currentPly === 0;
+  lastBtn.disabled = nextBtn.disabled = currentPly === state.fens.length - 1;
+
   const prevActive = moveListEl.querySelector('.move-chip.active');
   if (prevActive) prevActive.classList.remove('active');
   const activeChip = moveListEl.querySelector(`.move-chip[data-ply="${currentPly}"]`);
   if (activeChip) {
     activeChip.classList.add('active');
-    activeChip.scrollIntoView({ block: 'nearest' });
+    // Sadece listenin içini kaydır (sayfanın kendisini kaydırmadan)
+    const top = activeChip.offsetTop - moveListEl.offsetTop;
+    if (top < moveListEl.scrollTop) moveListEl.scrollTop = top - 8;
+    else if (top + activeChip.offsetHeight > moveListEl.scrollTop + moveListEl.clientHeight) {
+      moveListEl.scrollTop = top + activeChip.offsetHeight - moveListEl.clientHeight + 8;
+    }
+  } else if (currentPly === 0) {
+    moveListEl.scrollTop = 0;
   }
 }
-function fileIndex(sq) { return sq.charCodeAt(0) - 97; }
-function rankIndexFromTop(sq) { return 8 - parseInt(sq[1], 10); }
+
+function flipBoard() {
+  boardFlipped = !boardFlipped;
+  renderPlayers();
+  goToPly(currentPly);
+}
+
+firstBtn.addEventListener('click', () => goToPly(0));
 prevBtn.addEventListener('click', () => goToPly(currentPly - 1));
 nextBtn.addEventListener('click', () => goToPly(currentPly + 1));
+lastBtn.addEventListener('click', () => goToPly(state.fens.length - 1));
+flipBtn.addEventListener('click', flipBoard);
 document.addEventListener('keydown', (e) => {
   if (!state) return;
-  if (e.key === 'ArrowLeft') goToPly(currentPly - 1);
-  else if (e.key === 'ArrowRight') goToPly(currentPly + 1);
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if (e.key === 'ArrowLeft') { goToPly(currentPly - 1); e.preventDefault(); }
+  else if (e.key === 'ArrowRight') { goToPly(currentPly + 1); e.preventDefault(); }
+  else if (e.key === 'Home') { goToPly(0); e.preventDefault(); }
+  else if (e.key === 'End') { goToPly(state.fens.length - 1); e.preventDefault(); }
+  else if (e.key === 'f' || e.key === 'F') flipBoard();
 });
 analyzeBtn.addEventListener('click', runAnalysis);
-renderBoard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', null, null);
-
-// script.js dosyasının en sonuna sadece bu bloğu yapıştırın:
 
 document.getElementById('backToSetupBtn').addEventListener('click', () => {
-    document.getElementById('reviewLayout').classList.remove('active');
-    document.getElementById('mainSetupPanel').style.display = 'block';
-    document.getElementById('mainHeader').style.display = 'block';
-    document.getElementById('mainFooter').style.display = 'block';    
-    state = null;
-    currentPly = 0;
-    
-    pgnInput.value = '';
-    
-    document.getElementById('fileStatusText').textContent = '';
-    document.getElementById('analyzeBtn').disabled = false;
-
-    const openingCard = document.getElementById('openingCard');
-    if (openingCard) openingCard.style.display = 'none';
-    if (commentaryCard) commentaryCard.style.display = 'none';
+  reviewLayout.classList.remove('active');
+  setupView.classList.remove('is-hidden');
+  state = null;
+  currentPly = 0;
+  pgnInput.value = '';
+  fileStatusText.textContent = '';
+  pgnFileInput.value = '';
+  analyzeBtn.disabled = false;
+  progressFill.style.width = '0%';
+  updatePerspectiveFromSelect();
+  window.scrollTo(0, 0);
 });
 
 // --- Yardımcı Fonksiyonlar ---
