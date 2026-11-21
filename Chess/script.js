@@ -788,11 +788,13 @@ function cpToWinPercent(cp) {
   const capped = Math.max(-1000, Math.min(1000, cp));
   return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * capped)) - 1);
 }
+// Tek bir hamlenin doğruluğu (Lichess'in formülü, lila: AccuracyPercent.scala).
+// winBefore / winAfter: hamleyi yapanın kazanma yüzdesi (0–100), hamleden önce ve sonra.
 function moveAccuracy(winBefore, winAfter) {
-  const diff = Math.max(0, winBefore - winAfter);
-  // Katsayı -0.068 yapılarak hataların doğruluğu düşürme etkisi sertleştirildi
-  const acc = 103.1668 * Math.exp(-0.068 * diff) - 3.1669; 
-  return Math.max(0, Math.min(100, acc));
+  if (winAfter >= winBefore) return 100;
+  const diff = winBefore - winAfter;
+  const raw = 103.1668100711649 * Math.exp(-0.04354415386753951 * diff) - 3.166924740191411;
+  return Math.max(0, Math.min(100, raw + 1)); // +1: analizdeki belirsizlik payı (Lichess'te de var)
 }
 
 function isSacrifice(move) {
@@ -822,25 +824,49 @@ function classifyMove({ loss, gapBefore, isBest, sac, isBook }) {
 }
 
 
+// Oyun doğruluğu — Lichess'in yöntemi:
+//  1) Her hamle için doğruluk (moveAccuracy).
+//  2) Ağırlıklı ortalama: ağırlık, o andaki kazanma yüzdesinin oynaklığı (kayan pencerede standart
+//     sapma, 0.5–12 arası). Keskin anlardaki hamleler daha çok, sakin anlardakiler daha az sayılır.
+//  3) Harmonik ortalama: tek bir büyük hata sonucu sert düşürür.
+//  Sonuç = (ağırlıklı ortalama + harmonik ortalama) / 2.
+// Eskiden basit aritmetik ortalama kullanılıyor, kitap hamleleri de hariç tutuluyordu; birkaç
+// büyük hata bile oranı pek düşürmediği için sonuçlar gerçekçi olmayacak kadar yüksek çıkıyordu.
+function stdDev(arr) {
+  const m = arr.reduce((a, b) => a + b, 0) / arr.length;
+  return Math.sqrt(arr.reduce((a, b) => a + (b - m) * (b - m), 0) / arr.length);
+}
 function computeAccuracies() {
-  const wAccs = [], bAccs = [];
-  for (let i = 0; i < state.moves.length; i++) {
-    // AÇILIŞ KORUMASI: Kitap hamlelerini (book) ve analiz verisi alınamayan
-    // (unknown) hamleleri doğruluk ortalamasını yapay şekilde etkilememesi için hesaba katmıyoruz
-    if (state.perMove[i] && (state.perMove[i].cls === 'book' || state.perMove[i].cls === 'unknown')) {
-      continue; 
-    }
-    
-    const moverIsWhite = state.moves[i].color === 'w';
-    // [DÜZELTME #4] Doğruluk, sınıflandırmayla aynı (tek kaynaktan gelen) puanlardan hesaplanır:
-    // bestCp = pozisyondaki en iyi hamlenin puanı, playedCp = oynanan hamlenin puanı.
-    const winBefore = cpToWinPercent(state.perMove[i].bestCp);
-    const winAfter = cpToWinPercent(state.perMove[i].playedCp);
-    const acc = moveAccuracy(winBefore, winAfter);
-    if (moverIsWhite) wAccs.push(acc); else bAccs.push(acc);
+  const n = state.moves.length;
+  if (n === 0) return { white: null, black: null };
+  // Her pozisyon için Beyaz'ın kazanma yüzdesi (oynaklık ağırlıkları için)
+  const wins = [];
+  let last = 0;
+  for (let i = 0; i < state.evals.length; i++) {
+    if (state.evals[i] !== null && state.evals[i] !== undefined) last = state.evals[i];
+    wins.push(cpToWinPercent(last));
   }
-  const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
-  return { white: avg(wAccs), black: avg(bAccs) };
+  const windowSize = Math.min(8, Math.max(2, Math.floor(state.evals.length / 10)));
+  const windows = [];
+  for (let k = 0; k < windowSize - 2 && k < n; k++) windows.push(wins.slice(0, windowSize));
+  for (let k = 0; k + windowSize <= wins.length; k++) windows.push(wins.slice(k, k + windowSize));
+  const weights = windows.map(w => Math.min(12, Math.max(0.5, stdDev(w))));
+
+  const per = { w: [], b: [] };
+  for (let i = 0; i < n; i++) {
+    const m = state.perMove[i];
+    if (!m || m.cls === 'unknown' || m.bestCp === null || m.playedCp === null) continue;
+    const acc = moveAccuracy(cpToWinPercent(m.bestCp), cpToWinPercent(m.playedCp));
+    per[m.color].push({ acc, weight: weights[i] !== undefined ? weights[i] : 0.5 });
+  }
+  const gameAccuracy = (list) => {
+    if (list.length === 0) return null;
+    const wSum = list.reduce((a, x) => a + x.weight, 0);
+    const weighted = list.reduce((a, x) => a + x.acc * x.weight, 0) / wSum;
+    const harmonic = list.length / list.reduce((a, x) => a + 1 / Math.max(x.acc, 1), 0);
+    return (weighted + harmonic) / 2;
+  };
+  return { white: gameAccuracy(per.w), black: gameAccuracy(per.b) };
 }
 
 async function runAnalysis() {
