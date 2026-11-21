@@ -1,26 +1,20 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Santraç Analizi </title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Satranç Analizi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
-<head>
-   
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script> 
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<link rel="stylesheet" href="style.css">
 <body>
-  
+
 <div class="wrap" id="mainWrap">
   <header class="masthead" id="mainHeader">
-    <h1>Santranç İncelemesi</h1>
+    <h1>Satranç İncelemesi</h1>
     <p class="subtitle">PGN'ini yükle </p>
   </header>
   <div class="setup-panel" id="mainSetupPanel">
@@ -37,7 +31,7 @@
       <input type="file" id="pgnFile" accept=".pgn" style="display: none;">
     </div>
     <div class="tab-content" id="contentText">
-      <textarea id="pgnInput" placeholder="Standart PGN, ya da boşluksuz/Türkçe harfli sıkışık format yapıştırın: 1. e4g62. Af3Fg7..."></textarea>
+      <textarea id="pgnInput" class="w-full h-40 bg-[#111c2a] border border-gray-800 rounded-lg p-3 text-sm text-gray-200 font-mono focus:outline-none focus:border-blue-500 transition-colors resize-none mb-4" placeholder="1. e4 e5 2. Nf3... veya PGN metnini buraya yapıştırın..."></textarea>
     </div>
     <div class="config-row">
       <div class="select-group">
@@ -46,14 +40,6 @@
           <option value="auto" selected>Farketmez</option>
           <option value="white">Beyaz</option>
           <option value="black">Siyah</option>
-        </select>
-      </div>
-      <div class="select-group">
-        <span class="setup-label">Analiz Derinliği</span>
-        <select id="depthSelect">
-          <option value="12" selected>Derinlik 12 - Tavsiye Edilen</option>
-          <option value="15">Derinlik 15</option>
-          <option value="18">Derinlik 18</option>
         </select>
       </div>
     </div>
@@ -67,6 +53,7 @@
     </div>
     <div class="error-msg" id="errorMsg"></div>
   </div>
+
   <div class="review-layout" id="reviewLayout">
     <div class="board-col">
       <div class="board-frame">
@@ -87,58 +74,50 @@
         <button class="nav-btn" id="nextBtn" aria-label="Sonraki hamle">▶</button>
       </div>
     </div>
+
     <div class="side-col analysis-col">
       <div class="info-card">
-  <button class="btn btn-ghost" id="backToSetupBtn" style="width: 100%;">🔙 Yeni Maç Analiz Et</button>
-</div>
+        <button class="btn btn-ghost" id="backToSetupBtn" style="width: 100%;">🔙 Yeni Maç Analiz Et</button>
+      </div>
+
+      <!-- Açılış Teorisi Kartı -->
+      <div class="info-card" id="openingCard" style="display: none;">
+        <h3 class="info-card-title">📖 Açılış Teorisi</h3>
+        <div id="openingNameText" style="font-size: 14px; font-weight: 500; color: var(--text-primary); margin-top: 6px; line-height: 1.4;">—</div>
+      </div>
+
       <div class="info-card movelist-card">
-        <!-- Dinamik Açılış Teorisi Kartı -->
-<div class="info-card" id="openingCard" style="display: none; margin-bottom: 12px; padding: 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
-  <h3 class="info-card-title" style="margin: 0; font-size: 13px; font-weight: 600; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.5px;">📖 Açılış Teorisi</h3>
-  <div id="openingNameText" style="font-size: 14px; font-weight: 500; color: #ffffff; margin-top: 6px; line-height: 1.4; font-family: 'Inter', sans-serif;">—</div>
-</div>
         <h3 class="info-card-title">📋 Hamle Listesi</h3>
         <div class="move-list" id="moveList"></div>
       </div>
+
+      <!-- Hamle Açıklama Kartı (Engine Commentary) -->
+      <div id="commentaryCard" class="info-card" style="display: none;">
+        <div class="flex items-center gap-2 mb-2">
+          <span id="commBadge" class="px-2 py-0.5 rounded text-xs font-bold flex items-center justify-center"></span>
+          <span id="commTitle" class="text-white font-semibold text-sm"></span>
+        </div>
+        <p id="commText" class="text-gray-400 text-xs leading-relaxed mb-3"></p>
+        <div id="commPvContainer" class="bg-[#111c2a] rounded p-2 border border-gray-900 hidden">
+          <span class="text-gray-500 text-[9px] uppercase font-bold block mb-1">En İyi Devam Yolu (Varyant):</span>
+          <p id="commPvText" class="font-mono text-xs text-gray-300 tracking-tight leading-relaxed"></p>
+        </div>
+      </div>
+
       <div class="info-card" id="accuracyCard">
         <h3 class="info-card-title">🎯 Doğruluk</h3>
         <div class="accuracy-row">
           <div class="accuracy-box"><span class="acc-label">Beyaz</span><span class="acc-value" id="whiteAcc">—</span></div>
           <div class="accuracy-box"><span class="acc-label">Siyah</span><span class="acc-value" id="blackAcc">—</span></div>
         </div>
-        <div class="accuracy-card bg-[#1b2735] border border-gray-800 rounded-xl p-4 mb-4">
-                  <div class="text-xs text-gray-400 mb-3 uppercase font-semibold tracking-wider">Tahmini Doğruluk Oranları</div>
-                  <div class="grid grid-cols-2 gap-4 text-center">
-                    <div class="bg-[#111c2a] rounded-lg p-3 border border-gray-950">
-                      <div class="text-[10px] text-gray-500 uppercase font-bold mb-1">Beyaz</div>
-                      <div class="text-xl font-bold text-[#81b64c]" id="whiteAcc">—</div>
-                    </div>
-                    <div class="bg-[#111c2a] rounded-lg p-3 border border-gray-950">
-                      <div class="text-[10px] text-gray-500 uppercase font-bold mb-1">Siyah</div>
-                      <div class="text-xl font-bold text-[#81b64c]" id="blackAcc">—</div>
-                    </div>
-                  </div>
-                </div>
       </div>
-      <!-- Hamle Açıklama Kartı (Engine Commentary) -->
-                <div id="commentaryCard" class="bg-[#1b2735] border border-gray-800 rounded-xl p-4 mb-4" style="display: none;">
-                  <div class="flex items-center gap-2 mb-2">
-                    <span id="commBadge" class="px-2 py-0.5 rounded text-xs font-bold flex items-center justify-center"></span>
-                    <span id="commTitle" class="text-white font-semibold text-sm"></span>
-                  </div>
-                  <p id="commText" class="text-gray-400 text-xs leading-relaxed mb-3"></p>
-                  <div id="commPvContainer" class="bg-[#111c2a] rounded p-2 border border-gray-900 hidden">
-                    <span class="text-gray-500 text-[9px] uppercase font-bold block mb-1">En İyi Devam Yolu (Varyant):</span>
-                    <p id="commPvText" class="font-mono text-xs text-gray-300 tracking-tight leading-relaxed"></p>
-                  </div>
-                </div>
     </div>
   </div>
+
   <footer class="note" id="mainFooter">
   </footer>
 </div>
-</body>
-<script type="module" src="script.js">
-</script>
-</html>
 
+<script type="module" src="script.js"></script>
+</body>
+</html>
