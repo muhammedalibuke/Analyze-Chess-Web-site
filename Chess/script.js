@@ -257,7 +257,7 @@ function setPlatform(p) {
     b.setAttribute('aria-checked', on ? 'true' : 'false');
   }
   accountInput.placeholder = p === 'lichess'
-    ? 'Lichess kullanıcı adı ya da parti linki'
+    ? 'Kullanıcı adı ya da parti linki'
     : 'Chess.com kullanıcı adı';
 }
 for (const b of platformButtons) b.addEventListener('click', () => setPlatform(b.dataset.platform));
@@ -1140,33 +1140,6 @@ function renderLegend() {
 }
 renderLegend();
 
-// Giriş ekranının sağındaki örnek pozisyon: Opera Partisi, 13.Rxd7!!
-function renderPreviewBoard() {
-  const el = document.getElementById('previewBoard');
-  if (!el) return;
-  const board = new Chess('3rkb1r/p2Rqppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/2K4R b k - 0 13').board();
-  el.innerHTML = '';
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const sq = String.fromCharCode(97 + c) + (8 - r);
-      const div = document.createElement('div');
-      div.className = 'sq ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
-      if (sq === 'd1' || sq === 'd7') {
-        div.classList.add(sq === 'd7' ? 'hl-to' : 'hl-from');
-        div.style.setProperty('--hl-color', CLASS_META.great.color);
-      }
-      const p = board[r][c];
-      if (p) {
-        const g = document.createElement('div');
-        g.className = `piece-graphic ${p.type}-${p.color}`;
-        div.appendChild(g);
-      }
-      if (sq === 'd7') div.appendChild(makeBadge('great', 'board-badge'));
-      el.appendChild(div);
-    }
-  }
-}
-renderPreviewBoard();
 const previewBoardBtn = document.getElementById('previewBoardBtn');
 if (previewBoardBtn) previewBoardBtn.addEventListener('click', () => {
   pgnInput.value = SAMPLE_PGN;
@@ -1337,6 +1310,7 @@ function stepForward() {
 document.getElementById('startReviewBtn').addEventListener('click', () => navigate(1));
 
 function showReview() {
+  stopDemo();
   state.accuracies = computeAccuracies();
   setupView.classList.add('is-hidden');
   reviewLayout.classList.add('active');
@@ -1710,9 +1684,9 @@ function soundKindFor(m) {
 }
 
 // --- Kare koordinatı yardımcıları (tahta çevrilmesine göre görsel satır/sütun) ---
-function visualColRow(sq) {
+function visualColRow(sq, flipped = boardFlipped) {
   const file = sq.charCodeAt(0) - 97, rank = parseInt(sq[1], 10);
-  return boardFlipped ? { c: 7 - file, r: rank - 1 } : { c: file, r: 8 - rank };
+  return flipped ? { c: 7 - file, r: rank - 1 } : { c: file, r: 8 - rank };
 }
 function rookCastleSquares(m) {
   const rank = m.color === 'w' ? '1' : '8';
@@ -1738,13 +1712,13 @@ function animationFor(m, forward) {
   }
   return { slides, fadeOut, fadeIn };
 }
-function runBoardAnimation(anim) {
+function runBoardAnimation(anim, root = boardEl, flipped = boardFlipped) {
   if (!anim || prefersReducedMotion) return;
-  const size = boardEl.clientWidth / 8;
+  const size = root.clientWidth / 8;
   for (const s of anim.slides) {
-    const el = boardEl.querySelector(`.sq[data-sq="${s.to}"] .piece-graphic`);
+    const el = root.querySelector(`.sq[data-sq="${s.to}"] .piece-graphic`);
     if (!el) continue;
-    const a = visualColRow(s.from), b = visualColRow(s.to);
+    const a = visualColRow(s.from, flipped), b = visualColRow(s.to, flipped);
     el.style.transition = 'none';
     el.style.transform = `translate(${(a.c - b.c) * size}px, ${(a.r - b.r) * size}px)`;
     el.style.zIndex = '20';
@@ -1754,7 +1728,7 @@ function runBoardAnimation(anim) {
     setTimeout(() => { el.style.zIndex = ''; el.style.transition = ''; }, SLIDE_MS + 30);
   }
   for (const f of anim.fadeOut) {
-    const sqEl = boardEl.querySelector(`.sq[data-sq="${f.sq}"]`);
+    const sqEl = root.querySelector(`.sq[data-sq="${f.sq}"]`);
     if (!sqEl) continue;
     const ghost = document.createElement('div');
     ghost.className = `piece-graphic ${f.cls} piece-ghost`;
@@ -1762,7 +1736,7 @@ function runBoardAnimation(anim) {
     setTimeout(() => ghost.remove(), SLIDE_MS + 120);
   }
   for (const f of anim.fadeIn) {
-    const el = boardEl.querySelector(`.sq[data-sq="${f.sq}"] .piece-graphic`);
+    const el = root.querySelector(`.sq[data-sq="${f.sq}"] .piece-graphic`);
     if (el) el.classList.add('piece-fade-in');
   }
 }
@@ -2320,6 +2294,7 @@ document.getElementById('downloadPgnBtn').addEventListener('click', () => {
 });
 
 document.getElementById('backToSetupBtn').addEventListener('click', () => {
+  setTimeout(startDemo, 0);
   stopAutoplay();
   exitVariation();
   analysisCache.clear();
@@ -2543,3 +2518,110 @@ function formatPv(startFen, pvString) {
   }
   return formatted.join(' ');
 }
+
+
+// =========================================================
+// GİRİŞ EKRANI: kendi kendine oynayan örnek parti (Opera Partisi, 1858)
+// Değerlendirmeler ve hamle sınıfları bu sitenin kendi analizinden alındı.
+// =========================================================
+const DEMO_EVALS = [68,12,62,16,87,41,134,89,214,133,178,125,188,199,273,164,205,137,301,246,700,406,685,696,703,687,713,712,1100,1100,9000,9000,9000,9000];
+const DEMO_CLS = ['book','book','book','book','book','inaccuracy','book','mistake','best','excellent','excellent','inaccuracy','best','best','inaccuracy','excellent','good','mistake','best','blunder','best','mistake','great','best','great','best','great','best','best','best','best','best','best'];
+const DEMO_STEP_MS = 1500;
+const demoBoardEl = document.getElementById('previewBoard');
+const demoCaptionEl = document.getElementById('demoCaption');
+const demoEvalBar = document.getElementById('demoEvalBar');
+const demoEvalFill = document.getElementById('demoEvalFill');
+const demoEvalLabel = document.getElementById('demoEvalLabel');
+const demo = { ply: 0, timer: null, moves: null, fens: null };
+
+function renderDemo(ply, anim) {
+  const fen = demo.fens[ply];
+  const mv = ply > 0 ? demo.moves[ply - 1] : null;
+  const cls = ply > 0 ? DEMO_CLS[ply - 1] : null;
+  const meta = cls ? CLASS_META[cls] : null;
+  const board = new Chess(fen).board();
+  demoBoardEl.innerHTML = '';
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const sq = String.fromCharCode(97 + c) + (8 - r);
+      const div = document.createElement('div');
+      div.className = 'sq ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
+      div.dataset.sq = sq;
+      if (mv && (sq === mv.from || sq === mv.to)) {
+        div.classList.add(sq === mv.to ? 'hl-to' : 'hl-from');
+        div.style.setProperty('--hl-color', meta.color);
+      }
+      const p = board[r][c];
+      if (p) {
+        const g = document.createElement('div');
+        g.className = `piece-graphic ${p.type}-${p.color}`;
+        div.appendChild(g);
+      }
+      if (mv && sq === mv.to) div.appendChild(makeBadge(cls, 'board-badge' + (anim ? ' badge-pop' : '')));
+      if (c === 0) { const k = document.createElement('span'); k.className = 'coord coord-rank'; k.textContent = 8 - r; div.appendChild(k); }
+      if (r === 7) { const f = document.createElement('span'); f.className = 'coord coord-file'; f.textContent = String.fromCharCode(97 + c); div.appendChild(f); }
+      demoBoardEl.appendChild(div);
+    }
+  }
+  runBoardAnimation(anim, demoBoardEl, false);
+  // Değerlendirme çubuğu
+  const cp = DEMO_EVALS[ply];
+  demoEvalFill.style.height = whiteWinPercent(cp).toFixed(1) + '%';
+  demoEvalLabel.textContent = formatScoreShort(cp);
+  demoEvalLabel.className = 'eval-label ' + (cp >= 0 ? 'on-white' : 'on-black');
+  // Tahtanın altındaki açıklama
+  demoCaptionEl.innerHTML = '';
+  if (!mv) {
+    demoCaptionEl.textContent = 'Morphy, Opera Partisi. Tahtaya tıkla, partinin tamamını incele.';
+    return;
+  }
+  const num = Math.ceil(ply / 2) + (mv.color === 'w' ? '.' : '...');
+  const badge = makeBadge(cls);
+  const move = document.createElement('span');
+  move.className = 'demo-move';
+  move.textContent = `${num} ${mv.san}`;
+  const label = document.createElement('span');
+  label.className = 'demo-label';
+  label.style.color = meta.color;
+  label.textContent = meta.label;
+  const hint = document.createElement('span');
+  hint.className = 'demo-hint';
+  hint.textContent = 'Tahtaya tıkla, incele';
+  demoCaptionEl.append(badge, move, label, hint);
+}
+
+function demoStep() {
+  if (demo.ply >= demo.fens.length - 1) {
+    // Bitti: biraz bekle, baştan başla
+    demo.ply = 0;
+    renderDemo(0, null);
+    demo.timer = setTimeout(demoStep, DEMO_STEP_MS);
+    return;
+  }
+  const mv = demo.moves[demo.ply];
+  demo.ply++;
+  renderDemo(demo.ply, animationFor(mv, true));
+  demo.timer = setTimeout(demoStep, demo.ply >= demo.fens.length - 1 ? 4500 : DEMO_STEP_MS);
+}
+function stopDemo() {
+  if (demo.timer) clearTimeout(demo.timer);
+  demo.timer = null;
+}
+function startDemo() {
+  stopDemo();
+  if (!demo.fens || setupView.classList.contains('is-hidden') || document.hidden) return;
+  demo.timer = setTimeout(demoStep, 900);
+}
+try {
+  const parsed = parsePgn(SAMPLE_PGN);
+  demo.moves = parsed.moves;
+  demo.fens = parsed.fens;
+  renderDemo(0, null);
+  startDemo();
+} catch (e) {
+  console.warn('Örnek parti yüklenemedi:', e);
+}
+document.addEventListener('visibilitychange', () => (document.hidden ? stopDemo() : startDemo()));
+previewBoardBtn && previewBoardBtn.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); previewBoardBtn.click(); }
+});
