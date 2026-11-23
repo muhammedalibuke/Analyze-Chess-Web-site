@@ -58,7 +58,24 @@ function selectTab(btn) {
   }
   // "Hesaptan getir" sekmesinde parti listeden seçilir; renk ve "Analiz et" düğmesi gizlenir
   document.getElementById('mainSetupPanel').dataset.tab = btn.dataset.tab;
+  fitSetupCol();
 }
+
+// Sağ panel ekrana sığmıyorsa önce alttaki notu, sonra hamle işaretleri listesini gizle
+// (o liste inceleme ekranındaki "Özet" sekmesinde de var). Sığıyorsa hepsi görünür.
+function fitSetupCol() {
+  const col = document.querySelector('.setup-col');
+  if (!col) return;
+  const steps = ['fit-no-footer', 'fit-no-legend'];
+  col.classList.remove(...steps);
+  if (window.matchMedia('(max-width: 1000px)').matches) return; // mobilde sayfa zaten kayar
+  for (const cls of steps) {
+    if (col.scrollHeight <= col.clientHeight + 1) break;
+    col.classList.add(cls);
+  }
+}
+window.addEventListener('resize', fitSetupCol);
+requestAnimationFrame(() => fitSetupCol());
 for (const b of tabButtons) b.addEventListener('click', () => selectTab(b));
 selectTab(tabButtons.find(b => b.classList.contains('active')) || tabButtons[0]);
 
@@ -127,6 +144,7 @@ function analyzePgn(pgn, userColor) {
 // Parti listesi (dosyadaki partiler ve hesaptan gelen partiler aynı görünümü kullanır)
 // item: { white, black, whiteElo, blackElo, result, userColor, meta, pgn }
 function renderGameList(listEl, items) {
+  requestAnimationFrame(fitSetupCol);
   listEl.innerHTML = '';
   for (const it of items) {
     const li = document.createElement('li');

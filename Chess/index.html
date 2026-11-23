@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 
@@ -97,17 +97,13 @@
 
       <div class="config-row">
         <label class="select-group" for="colorSelect">
-          <span class="setup-label">Hangi renkle oynadın?</span>
+          <span class="setup-label">Hangi renkle oynadın? <span class="setup-label-hint">(tahta senin tarafından gösterilir)</span></span>
           <select id="colorSelect">
             <option value="auto" selected>Fark etmez</option>
             <option value="white">Beyaz</option>
             <option value="black">Siyah</option>
           </select>
         </label>
-        <p class="config-hint">Tahta senin tarafından gösterilir.</p>
-      </div>
-
-      <div class="setup-actions">
         <button class="btn btn-primary" id="analyzeBtn">Analiz et</button>
       </div>
 
@@ -220,6 +216,6 @@
   </div>
       </div>
 
-<script type="module" src="script.js?v=14"></script>
+<script type="module" src="script.js?v=15"></script>
 </body>
 </html>
