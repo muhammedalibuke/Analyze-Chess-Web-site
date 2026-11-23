@@ -110,7 +110,7 @@ button { cursor: pointer; }
   container-type: inline-size;
 }
 .preview-caption { margin: 16px 0 0 32px; font-size: 14px; color: var(--text-secondary); max-width: 46ch; }
-.preview-caption b { font-family: var(--font-mono); color: var(--genius); font-weight: 600; }
+.preview-caption b { font-family: var(--font-mono); color: #749BBF; font-weight: 600; }
 
 .setup-alt { margin: 14px 2px 0; font-size: 14px; color: var(--text-muted); }
 .link-btn {
@@ -263,50 +263,41 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 
 /* =========================================================
    İNCELEME EKRANI
+   Masaüstünde tam ekran: sayfa kaymaz. Tahta, ekran yüksekliğinin neredeyse tamamını
+   kullanır (üst bar yok; oyun bilgisi ve düğmeler sağ panelin üstünde). Sağ panel
+   kalan genişliği alır ve ekran yüksekliğini doldurur.
    ========================================================= */
 .review-layout { display: none; }
-/* İnceleme ekranı tahta + sağ panelden oluşan tek bir blok; üst bar bu bloğun genişliğini alır */
-/* Masaüstünde inceleme ekranı tam ekran bir uygulama gibi: sayfa kaymaz, tahta kalan
-   yüksekliğin tamamını, sağ panel ise kalan genişliği kullanır. */
 .review-layout.active {
-  --panel-w: clamp(380px, 27vw, 520px);
-  display: flex; flex-direction: column;
+  --panel-w: clamp(360px, 26vw, 500px);
+  --bar-h: 26px;
+  display: block;
   height: 100vh; height: 100dvh;
-  padding: 12px 24px 16px;
+  padding: 10px 16px;
 }
-
-.review-bar {
-  display: flex; align-items: center; gap: 20px;
-  flex: none;
-  margin-bottom: 12px;
-}
-.game-info { min-width: 0; }
-.game-title { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.game-sub { font-size: 14px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.result-chip { font-family: var(--font-mono); font-size: 13px; padding: 1px 8px; margin-left: 8px; border-radius: 99px; border: 1px solid var(--line-strong); color: var(--text-primary); }
-
 .review-grid {
-  flex: 1; min-height: 0;
+  height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--panel-w);
-  gap: 24px;
+  gap: 20px;
 }
 
 /* ---------- Tahta sütunu ---------- */
-/* Tahta mümkün olan en büyük boyutta: hem kalan yüksekliğe hem kalan genişliğe sığar.
-   (100vh − üst bar − oyuncu şeritleri − boşluklar) ile (100vw − sağ panel − boşluklar)'ın küçüğü. */
+/* Tahta (değerlendirme çubuğu dahil) hem kalan yüksekliğe hem kalan genişliğe sığan en büyük kare.
+   Yükseklik payı: 2 × oyuncu şeridi + boşluklar + çerçeve + sayfa kenar boşluğu ≈ 84px. */
 .board-col {
-  display: flex; flex-direction: column; gap: 6px;
-  width: min(calc(100vh - 124px), calc(100vw - var(--panel-w) - 72px));
-  min-width: 360px;
+  display: flex; flex-direction: column; gap: 4px;
+  width: min(calc(100vh - 58px), calc(100vw - var(--panel-w) - 52px));
+  min-width: 340px;
   justify-self: center;
+  align-self: center;
 }
 
 .player-bar {
   display: flex; align-items: center; gap: 10px;
   padding: 0 4px 0 34px; /* değerlendirme çubuğu genişliği kadar içeriden başla */
   font-size: 15px; font-weight: 600;
-  min-height: 24px;
+  height: var(--bar-h);
 }
 .player-bar .swatch { margin-right: 2px; }
 .player-bar .player-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -343,40 +334,29 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 .eval-bar.flipped .eval-label.on-white { bottom: auto; top: 6px; }
 .eval-bar.flipped .eval-label.on-black { top: auto; bottom: 6px; }
 
-/* Ahşap zemin + krem çerçeve */
+/* İnce ahşap çerçeve (yer kaplamasın diye koordinatlar karelerin içinde) */
 .board-frame {
   position: relative; flex: 1; min-width: 0;
   container-type: inline-size;
   background: linear-gradient(160deg, var(--board-frame-wood-1) 0%, var(--board-frame-wood-2) 100%);
-  border-radius: 16px;
-  padding: clamp(8px, 1.8%, 18px);
-  box-shadow: 0 30px 70px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.04);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
 }
-.board-mat {
-  display: grid;
-  grid-template-columns: 4% 1fr 4%;
-  grid-template-rows: 4% 1fr 4%;
-  aspect-ratio: 1 / 1; /* satır yüzdeleri genişliğe göre çözülsün; alt koordinat satırı kesilmesin */
-  background: var(--board-frame-mat);
-  border-radius: 8px;
-  box-shadow: inset 0 0 0 1px rgba(83,106,88,0.25), 0 10px 26px rgba(0,0,0,0.35);
-}
-.frame-coord-row, .frame-coord-col { display: flex; user-select: none; pointer-events: none; }
-.frame-coord-row { grid-column: 2; align-items: center; justify-content: space-around; }
-.frame-coord-row.top { grid-row: 1; }
-.frame-coord-row.bottom { grid-row: 3; }
-.frame-coord-col { grid-row: 2; flex-direction: column; align-items: center; justify-content: space-around; }
-.frame-coord-col.left { grid-column: 1; }
-.frame-coord-col.right { grid-column: 3; }
-.frame-coord-row span, .frame-coord-col span {
-  font-family: var(--font-mono); font-weight: 600; color: var(--board-dark);
-  font-size: clamp(9px, 1.8cqw, 15px);
-}
-.board-outer { grid-column: 2; grid-row: 2; position: relative; width: 100%; aspect-ratio: 1 / 1; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(83,106,88,0.35); }
+.board-outer { position: relative; width: 100%; aspect-ratio: 1 / 1; border-radius: 4px; overflow: hidden; }
 #board { display: grid; grid-template-columns: repeat(8,1fr); grid-template-rows: repeat(8,1fr); width: 100%; height: 100%; container-type: inline-size; }
 .sq { position: relative; display: flex; align-items: center; justify-content: center; }
 .sq.light { background: var(--board-light); }
 .sq.dark { background: var(--board-dark); }
+/* Kare içi koordinatlar: açık karede koyu, koyu karede açık renk */
+.coord {
+  position: absolute; z-index: 6; pointer-events: none; user-select: none;
+  font-family: var(--font-mono); font-weight: 600; font-size: max(10px, 1.7cqw); line-height: 1;
+}
+.sq.light .coord { color: var(--board-dark); }
+.sq.dark .coord { color: var(--board-light); }
+.coord-rank { top: 4%; left: 5%; }
+.coord-file { bottom: 4%; right: 6%; }
 
 /* Son hamlenin kareleri: hamle sınıfının renginde hafif boya */
 .sq.hl-from::before, .sq.hl-to::before {
@@ -411,28 +391,73 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 
 #arrowOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; }
 
-/* ---------- Gezinme ---------- */
-.board-controls {
-  display: flex; align-items: center; justify-content: center; gap: 6px;
+/* ---------- Sağ panel ---------- */
+.side-col {
+  display: flex; flex-direction: column;
+  min-width: 0; min-height: 0; height: 100%;
+  background: var(--panel-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
-.controls-card { flex: none; }
-.nav-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 42px; height: 42px;
-  background: var(--panel-bg); color: var(--text-primary);
-  border: 1px solid var(--line); border-radius: var(--radius-md);
-  transition: border-color .15s ease;
+.panel-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
 }
-.nav-btn svg { width: 18px; height: 18px; }
-.nav-btn:hover:not(:disabled) { border-color: var(--accent); }
-.nav-btn:disabled { opacity: .3; cursor: not-allowed; }
-.nav-flip { margin-left: 10px; }
-#plyLabel {
-  font-family: var(--font-mono); font-size: 14px; font-weight: 500;
-  min-width: 150px; text-align: center; color: var(--text-primary);
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 36px; height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-strong);
+  background: transparent; color: var(--text-primary);
 }
+.icon-btn:hover { border-color: var(--accent); }
+.icon-btn svg { width: 18px; height: 18px; }
+.game-info { min-width: 0; flex: 1; }
+.game-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.game-sub { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.result-chip { font-family: var(--font-mono); font-size: 12px; padding: 1px 7px; margin-left: 8px; border-radius: 99px; border: 1px solid var(--line-strong); color: var(--text-primary); }
 
-/* ---------- Avantaj grafiği (sağ panelde) ---------- */
+.panel-tabs { display: flex; flex: none; border-bottom: 1px solid var(--line); }
+.panel-tab {
+  flex: 1; padding: 10px 8px;
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--text-secondary); font-size: 14.5px; font-weight: 600;
+}
+.panel-tab:hover { color: var(--text-primary); }
+.panel-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+.panel-body { display: none; flex: 1; min-height: 0; flex-direction: column; }
+.panel-body.active { display: flex; }
+#panelSummary { overflow-y: auto; padding: 8px 14px 14px; gap: 12px; }
+#panelMoves { padding: 0; }
+
+/* ---------- Özet (Chess.com düzeni): sınıf adı | Beyaz | simge | Siyah ---------- */
+.summary-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 14.5px; }
+.summary-table th, .summary-table td { padding: 5px 0; }
+.summary-table thead th { font-size: 13px; font-weight: 600; padding: 6px 0 8px; }
+.summary-table thead th:first-child { width: 40%; }
+.summary-table thead th:nth-child(3) { width: 40px; }
+.sum-player { text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sum-player .swatch { margin-right: 6px; }
+.summary-table tbody th { text-align: left; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+.sum-acc-row th, .sum-acc-row td { padding-bottom: 12px !important; border-bottom: 1px solid var(--line); }
+.sum-acc-row td { text-align: center; }
+.acc-box {
+  display: inline-block; min-width: 64px; padding: 6px 10px;
+  border-radius: 6px; text-align: center;
+  font-size: 18px; font-weight: 700;
+}
+.acc-w { background: #F3EFE8; color: #1B1B1B; }
+.acc-b { background: #2A2F3D; color: #F3EFE8; box-shadow: inset 0 0 0 1px var(--line-strong); }
+#classRows tr:first-child th, #classRows tr:first-child td { padding-top: 12px; }
+.sum-count { text-align: center; font-weight: 700; font-size: 15px; color: var(--cls); }
+.sum-icon { text-align: center; }
+.sum-icon .cls-badge { width: 24px; height: 24px; font-size: 12px; vertical-align: middle; }
+.sum-icon .cls-badge svg { width: 13px; height: 13px; }
+
 .graph-card {
   flex: none;
   background: var(--panel-bg-2);
@@ -440,30 +465,25 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   border-radius: var(--radius-md);
   overflow: hidden;
 }
-#evalGraph { display: block; width: 100%; height: 64px; cursor: pointer; }
+#evalGraph { display: block; width: 100%; height: 72px; cursor: pointer; }
 #evalGraph .g-black { fill: #2A2320; }
 #evalGraph .g-white { fill: #E9E4DA; }
 #evalGraph .g-mid { stroke: rgba(148,163,184,.45); stroke-width: 1; stroke-dasharray: 3 4; }
 #evalGraph .g-cursor { stroke: var(--accent); stroke-width: 2; }
 #evalGraph .g-dot { stroke: #fff; stroke-width: 1.5; }
+.review-start { flex: none; width: 100%; }
 
-/* ---------- Sağ sütun ---------- */
-.side-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
-.info-card {
-  background: var(--panel-bg);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: 14px 16px;
+/* ---------- Hamleler sekmesi ---------- */
+.comment-card {
+  flex: none;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--cls, transparent);
 }
-.comment-card { flex: none; }
-.info-card-title { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
-
-/* Yorum kartı: sınıf, hamle ve değerlendirme tek satırda; öneri ve motor devamı birer satır */
-.comment-card { border-left: 3px solid var(--cls, var(--line-strong)); }
-.comment-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.comment-label { font-weight: 600; font-size: 15px; color: var(--cls, var(--text-primary)); white-space: nowrap; }
+.comment-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
 .comment-move { font-family: var(--font-mono); font-size: 16px; font-weight: 600; white-space: nowrap; }
 .comment-move:empty { display: none; }
+.comment-label { font-weight: 600; font-size: 15px; color: var(--cls, var(--text-primary)); white-space: nowrap; }
 .comment-eval { margin-left: auto; font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
 .comment-text { margin: 6px 0 0; font-size: 14px; color: var(--text-secondary); }
 .comment-best { margin-top: 6px; font-size: 14px; color: var(--text-secondary); }
@@ -478,96 +498,82 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 .comment-pv-label { font-family: var(--font-ui); color: var(--text-muted); }
 .comment-card .cls-badge:empty { display: none; }
 
-/* Özet: doğruluk + sınıf sayıları (iki satırlık kompakt tablo) */
-.summary-card { flex: none; padding: 12px 16px 6px; }
-.summary-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
-.summary-table th, .summary-table td { padding: 8px 0; }
-.summary-table thead th { padding: 0 0 8px; vertical-align: bottom; }
-.summary-table thead th:first-child { width: auto; }
-.sum-acc-h { width: 74px; text-align: right; padding-right: 10px !important; font-size: 12.5px; font-weight: 500; color: var(--text-muted); }
-.sum-cls-h { width: 28px; text-align: center; }
-.sum-cls-h .cls-badge { width: 20px; height: 20px; font-size: 10.5px; }
-.sum-cls-h .cls-badge svg { width: 11px; height: 11px; }
-.summary-table tbody tr { border-top: 1px solid var(--line); }
-.summary-table tbody th { text-align: left; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.summary-table tbody th .swatch { margin-right: 8px; }
-.sum-acc { text-align: right; padding-right: 10px !important; font-size: 18px; font-weight: 700; white-space: nowrap; }
-.sum-count { text-align: center; font-family: var(--font-mono); font-size: 13.5px; color: var(--text-muted); }
-.sum-count.has { color: var(--cls); font-weight: 600; }
-
-/* Hamle listesi */
-.movelist-card { display: flex; flex-direction: column; min-height: 140px; flex: 1; padding-bottom: 8px; }
-.move-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 0; margin: 0 -6px; padding: 0 6px; }
+.move-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px; }
 .move-row { display: grid; grid-template-columns: 34px 1fr 1fr; gap: 4px; align-items: center; }
 .move-row:nth-child(even) { background: rgba(255,255,255,0.025); border-radius: var(--radius-sm); }
-.move-num { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+.move-num { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); padding-left: 6px; }
 .move-chip {
   display: flex; align-items: center; justify-content: space-between; gap: 6px;
-  font-family: var(--font-mono); font-size: 14px; font-weight: 500;
+  font-family: var(--font-mono); font-size: 14px; font-weight: 500; line-height: 1.45;
   padding: 3px 8px;
-  line-height: 1.45;
   border-radius: var(--radius-sm);
   background: transparent; color: var(--text-primary);
   border: 1px solid transparent;
   text-align: left;
 }
-.move-chip:hover { background: rgba(255,255,255,0.04); }
+.move-chip:hover { background: rgba(255,255,255,0.05); }
 .move-chip.active { background: rgba(47, 211, 192, 0.12); border-color: rgba(47, 211, 192, 0.6); }
 .move-chip.empty { visibility: hidden; }
-.mv-sym { font-family: var(--font-ui); font-weight: 700; font-size: 13px; color: var(--cls); letter-spacing: -0.04em; }
-.mv-sym svg { width: 13px; height: 13px; vertical-align: -2px; }
-.move-chip.cls-fatal .mv-san, .move-chip.cls-flaw .mv-san,
-.move-chip.cls-genius .mv-san, .move-chip.cls-sharp .mv-san { color: var(--cls); }
+.mv-sym { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding: 0 3px; border-radius: 9px; background: var(--cls); color: #fff; font-family: var(--font-ui); font-weight: 700; font-size: 11px; letter-spacing: -0.04em; }
+.mv-sym svg { width: 11px; height: 11px; }
+.move-chip.cls-blunder .mv-san, .move-chip.cls-mistake .mv-san, .move-chip.cls-miss .mv-san,
+.move-chip.cls-inaccuracy .mv-san, .move-chip.cls-brilliant .mv-san, .move-chip.cls-great .mv-san { color: var(--cls); }
 
-/* ---------- Duyarlı yerleşim ---------- */
+/* ---------- Gezinme (sağ panelin altında) ---------- */
+.board-controls {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  flex: none;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+.nav-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 42px; height: 40px;
+  background: var(--panel-bg-2); color: var(--text-primary);
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+  transition: border-color .15s ease;
+}
+.nav-btn svg { width: 18px; height: 18px; }
+.nav-btn:hover:not(:disabled) { border-color: var(--accent); }
+.nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+.nav-flip { margin-left: 8px; }
+#plyLabel { font-family: var(--font-mono); font-size: 14px; font-weight: 500; min-width: 110px; flex: 1; text-align: center; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Kısa ekranlar: özet sıkışık ---------- */
+@media (min-width: 1081px) and (max-height: 820px) {
+  .summary-table th, .summary-table td { padding: 3px 0; }
+  .acc-box { font-size: 16px; padding: 4px 8px; }
+  #evalGraph { height: 56px; }
+  .comment-text { display: none; }
+}
+
+/* ---------- Dar ekran: alt alta (üst bilgi, tahta, gezinme, sekmeler) ---------- */
 @media (max-width: 1080px) {
-  /* Dar ekranda alt alta: tahta, gezinme, yorum, özet, grafik, hamleler */
-  .review-layout.active { height: auto; max-width: 720px; margin: 0 auto; padding: 16px 16px 32px; }
-  .review-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .board-col { width: 100%; min-width: 0; order: 1; }
+  .review-layout.active { height: auto; max-width: 720px; margin: 0 auto; padding: 10px 12px 24px; }
+  .review-grid { height: auto; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .board-col { width: 100%; min-width: 0; order: 2; align-self: start; }
   .side-col.analysis-col { display: contents; }
-  .controls-card { order: 2; }
-  .comment-card { order: 3; }
-  .summary-card { order: 4; }
-  .graph-card { order: 5; }
-  .movelist-card { order: 6; flex: none; }
-  .move-list { max-height: 360px; }
+  .panel-head { order: 1; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel-bg); }
+  .controls-card { order: 3; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel-bg); }
+  .panel-tabs { order: 4; border: 1px solid var(--line); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--panel-bg); margin-bottom: -10px; }
+  .panel-body { order: 5; background: var(--panel-bg); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  #panelSummary { overflow: visible; }
+  .move-list { max-height: 420px; }
 }
 @media (max-width: 560px) {
   .brand { margin-bottom: 28px; }
   .setup-panel { padding: 16px; }
-  .review-layout.active { padding: 12px 12px 32px; }
-  .review-bar { gap: 10px; margin-bottom: 12px; }
-  .game-title { font-size: 16px; }
   .board-row { gap: 6px; }
   .eval-bar { width: 16px; }
   .eval-label { display: none; }
   .player-bar { padding-left: 22px; }
-  .board-frame { border-radius: 12px; }
   .nav-btn { width: 38px; height: 38px; }
   .nav-flip { margin-left: 4px; }
-  #plyLabel { min-width: 0; flex: 1; font-size: 13px; }
-  .summary-card { padding: 10px 10px 4px; }
-  .sum-acc-h { width: 62px; }
-  .sum-cls-h { width: 24px; }
-  .sum-acc { font-size: 16px; }
-}
-/* Kısa ekranlar (ör. 1366×768): sağ panel sıkışır, hamle listesine yer kalsın */
-@media (min-width: 1081px) and (max-height: 860px) {
-  .comment-text { display: none; }
-  .summary-table th, .summary-table td { padding: 4px 0; }
-  .summary-table thead th { padding-bottom: 4px; }
-  .summary-card { padding: 8px 14px 4px; }
-  .sum-acc { font-size: 16px; }
-  #evalGraph { height: 48px; }
-  .info-card { padding: 10px 14px; }
-  .nav-btn { width: 38px; height: 38px; }
+  #plyLabel { min-width: 0; font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
-
-/* Taş görselleri (el çizimi set, base64) */
 
 /* ---------- Hesaptan getir ---------- */
 .account-form { display: flex; flex-direction: column; gap: 12px; }
@@ -637,7 +643,6 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 .game-go { font-size: 13.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
 #contentFile .game-list { margin-top: 14px; }
 
-.review-download { margin-left: auto; }
 
 @media (max-width: 560px) {
   .tabs-nav { display: flex; width: 100%; }
@@ -645,12 +650,6 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   .account-row { flex-direction: column; }
   .game-item { grid-template-columns: minmax(0, 1fr) auto; }
   .game-result { grid-column: 1 / -1; }
-  .review-download { padding: 8px 10px; }
-  .review-download .icon + * { display: none; }
-}
-@media (max-width: 420px) {
-  .review-download { font-size: 0; gap: 0; }
-  .review-download .icon { width: 18px; height: 18px; }
 }
 
 .setup-panel[data-tab="contentAccount"] .config-row,

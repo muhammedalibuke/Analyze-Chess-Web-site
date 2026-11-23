@@ -32,6 +32,28 @@ Uygulama dosyaları `Chess/` klasöründedir (`index.html`, `style.css`, `script
 
 İnceleme ekranındaki **PGN'i indir** düğmesi partiyi `.pgn` dosyası olarak kaydeder.
 
+## Hamleler nasıl sınıflandırılır?
+
+Chess.com'un "beklenen puan" sistemiyle: hamleyi yapanın kazanma beklentisinin (0–1) en iyi
+hamleye göre ne kadar düştüğüne bakılır.
+
+| Sınıf | Beklenen puan kaybı |
+|---|---|
+| En iyi ★ | 0 |
+| Mükemmel 👍 | 0 – 0.02 |
+| İyi ✓ | 0.02 – 0.05 |
+| Yanlışlık ?! | 0.05 – 0.10 |
+| Hata ? | 0.10 – 0.20 |
+| Büyük hata ?? | 0.20 ve üstü |
+
+Özel sınıflar:
+- **Harika !!**: (neredeyse) en iyi hamleyle yapılan gerçek bir taş fedası. Rakip taşı alabiliyor ve
+  takas sonunda en az ~2 puan malzeme gidiyor; feda öncesi pozisyon zaten tamamen kazanılmış değil.
+- **Çok iyi !**: tek iyi hamle; ikinci en iyi hamle beklentiyi en az 0.15 düşürürdü. Zorunlu hamleler
+  ve basit geri almalar sayılmaz.
+- **Kaçırılan hamle ✕**: rakip az önce hata/büyük hata yaptı ve sen bunu cezalandıramadın.
+- **Kitap**: Lichess açılış veritabanında olan hamle.
+
 ## Doğruluk oranı nasıl hesaplanır?
 
 Lichess'in yöntemiyle (açık kaynak lila kodundaki `AccuracyPercent`): her hamlenin doğruluğu,
