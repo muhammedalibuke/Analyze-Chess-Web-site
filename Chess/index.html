@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 
@@ -23,6 +23,10 @@
   <symbol id="i-flip" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0-3 3m3-3 3 3"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
   <symbol id="i-thumb" viewBox="0 0 24 24"><path fill="currentColor" d="M2 10h4v11H2V10Zm6 11V10.4l5.3-7.1a1.6 1.6 0 0 1 2.9 1.2L15 9h5.2a2 2 0 0 1 2 2.4l-1.6 7.8A2.3 2.3 0 0 1 18.4 21H8Z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path fill="currentColor" d="M4 9h4l5-4v14l-5-4H4z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path fill="currentColor" d="M4 9h4l5-4v14l-5-4H4z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16.5 9.5l5 5m0-5-5 5"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m0 0 6-6m-6 6 6 6"/></symbol>
 </svg>
 
@@ -146,6 +150,8 @@
           <div class="game-title" id="gameTitle"></div>
           <div class="game-sub" id="gameSub"></div>
         </div>
+        <button class="icon-btn" id="soundBtn" aria-label="Sesi kapat" title="Sesi kapat (M)"><svg aria-hidden="true"><use href="#i-sound"/></svg></button>
+        <button class="icon-btn" id="flipBtn" aria-label="Tahtayı çevir" title="Tahtayı çevir (F)"><svg aria-hidden="true"><use href="#i-flip"/></svg></button>
         <button class="icon-btn" id="downloadPgnBtn" title="PGN'i indir" aria-label="PGN'i indir"><svg aria-hidden="true"><use href="#i-download"/></svg></button>
       </div>
 
@@ -201,14 +207,14 @@
         <button class="nav-btn" id="firstBtn" aria-label="Başa dön" title="Başa dön (Home)"><svg aria-hidden="true"><use href="#i-first"/></svg></button>
         <button class="nav-btn" id="prevBtn" aria-label="Önceki hamle" title="Önceki hamle (←)"><svg aria-hidden="true"><use href="#i-prev"/></svg></button>
         <span id="plyLabel">Başlangıç konumu</span>
+        <button class="nav-btn nav-play" id="playBtn" aria-label="Otomatik oynat" title="Otomatik oynat (Boşluk)"><svg class="ic-play" aria-hidden="true"><use href="#i-play"/></svg><svg class="ic-pause" aria-hidden="true"><use href="#i-pause"/></svg></button>
         <button class="nav-btn" id="nextBtn" aria-label="Sonraki hamle" title="Sonraki hamle (→)"><svg aria-hidden="true"><use href="#i-next"/></svg></button>
         <button class="nav-btn" id="lastBtn" aria-label="Sona git" title="Sona git (End)"><svg aria-hidden="true"><use href="#i-last"/></svg></button>
-        <button class="nav-btn nav-flip" id="flipBtn" aria-label="Tahtayı çevir" title="Tahtayı çevir (F)"><svg aria-hidden="true"><use href="#i-flip"/></svg></button>
       </div>
     </aside>
   </div>
-</div>
+      </div>
 
-<script type="module" src="script.js?v=9"></script>
+<script type="module" src="script.js?v=10"></script>
 </body>
 </html>

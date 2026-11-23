@@ -537,6 +537,7 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 .nav-btn:hover:not(:disabled) { border-color: var(--accent); }
 .nav-btn:disabled { opacity: .3; cursor: not-allowed; }
 .nav-flip { margin-left: 8px; }
+#flipBtn { margin-left: 0; }
 #plyLabel { font-family: var(--font-mono); font-size: 14px; font-weight: 500; min-width: 110px; flex: 1; text-align: center; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- Kısa ekranlar: özet sıkışık ---------- */
@@ -573,6 +574,42 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* ---------- Canlı tahta: kayan taşlar, seçim, sürükleme ---------- */
+#board { touch-action: none; cursor: pointer; }
+.sq .piece-graphic { will-change: transform; }
+.piece-ghost { position: absolute !important; inset: 4%; width: auto !important; height: auto !important; animation: ghostOut 220ms ease forwards; z-index: 4 !important; }
+@keyframes ghostOut { to { opacity: 0; transform: scale(.8); } }
+.piece-fade-in { animation: fadeIn 220ms ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+.badge-pop { animation: badgePop 300ms cubic-bezier(.2,1.6,.4,1) 140ms both; }
+@keyframes badgePop { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
+.sq-selected::before { content: ""; position: absolute; inset: 0; background: rgba(255, 214, 102, .45); }
+.sq-target::after {
+  content: ""; position: absolute; z-index: 7; pointer-events: none;
+  width: 30%; height: 30%; border-radius: 50%;
+  background: rgba(20, 30, 25, .28);
+}
+.sq-capture::after {
+  content: ""; position: absolute; inset: 3%; z-index: 7; pointer-events: none;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 6px rgba(20, 30, 25, .3);
+}
+.piece-dragging {
+  position: fixed !important; z-index: 1000; pointer-events: none;
+  background-repeat: no-repeat; background-position: center; background-size: 92%;
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,.5));
+  transform: scale(1.08);
+}
+.nav-play .ic-pause { display: none; }
+.nav-play.is-playing .ic-play { display: none; }
+.nav-play.is-playing .ic-pause { display: inline; }
+.nav-play.is-playing { border-color: var(--accent); color: var(--accent); }
+#soundBtn.is-off { color: var(--text-muted); }
+.variation-back { font-size: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .piece-ghost, .piece-fade-in, .badge-pop { animation: none !important; }
 }
 
 /* ---------- Hesaptan getir ---------- */
