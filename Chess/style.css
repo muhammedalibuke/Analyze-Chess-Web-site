@@ -626,6 +626,32 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 .line-move.is-played { color: var(--text-secondary); }
 .line-move.is-current { color: var(--text-primary); font-weight: 700; background: rgba(129, 182, 76, .22); border-radius: 4px; padding: 0 3px; }
 
+/* Deneme modu: tahta solar (kareler griye çalar, taşlar net kalır), sarı çerçeve ve üstte etiket */
+.sq { transition: background-color .25s ease; }
+.board-frame.is-variation {
+  --board-light: #DEDAD3;
+  --board-dark: #8A968D;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 3px #F7C631;
+}
+.board-frame.is-variation .coord { opacity: .7; }
+.variation-pill {
+  position: absolute; z-index: 30; top: -14px; left: 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 5px 8px 5px 14px;
+  border: 0; border-radius: 99px;
+  background: #F7C631; color: #2B2200;
+  font-size: 13.5px; font-weight: 700; white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  animation: pillIn .25s ease both;
+}
+.variation-pill:hover { background: #FFD54A; }
+.variation-pill .pill-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(43, 34, 0, .15); font-size: 11px;
+}
+@keyframes pillIn { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
 /* ---------- Hesaptan getir ---------- */
 .account-form { display: flex; flex-direction: column; gap: 12px; }
 .platform-switch { display: inline-flex; gap: 8px; }

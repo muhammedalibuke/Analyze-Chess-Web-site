@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 
@@ -133,7 +133,8 @@
           <div class="eval-fill" id="evalFill"></div>
           <span class="eval-label" id="evalLabel"></span>
         </div>
-        <div class="board-frame">
+        <div class="board-frame" id="boardFrame">
+          <button type="button" class="variation-pill hidden" id="variationPill" title="Ana partiye dön (Esc)"></button>
           <div class="board-outer">
             <div id="board"></div>
             <svg id="arrowOverlay" viewBox="0 0 480 480" aria-hidden="true"></svg>
@@ -215,6 +216,6 @@
   </div>
       </div>
 
-<script type="module" src="script.js?v=11"></script>
+<script type="module" src="script.js?v=12"></script>
 </body>
 </html>
