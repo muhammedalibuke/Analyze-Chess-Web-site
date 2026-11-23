@@ -4,6 +4,8 @@ Tarayıcıda çalışan satranç parti inceleme uygulaması. PGN yüklenir; her 
 (Lichess Tablebase, ChessDB, Lichess Cloud Eval) veya yerel Stockfish ile analiz edilir, hamleler
 sınıflandırılır ve oyuncuların doğruluk oranı hesaplanır.
 
+**Canlı site:** https://muhammedalibuke.github.io/Analyze-Chess-Web-site/Chess/ (GitHub Pages; `main`'e yapılan her güncelleme yaklaşık bir dakikada yayına çıkar).
+
 Uygulama dosyaları `Chess/` klasöründedir (`index.html`, `style.css`, `script.js`).
 
 ![Giriş ekranı](docs/ekran-giris.jpg)
