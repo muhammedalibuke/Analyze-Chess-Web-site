@@ -84,35 +84,55 @@ button { cursor: pointer; }
 /* =========================================================
    GİRİŞ EKRANI
    ========================================================= */
+/* İnceleme ekranıyla aynı düzen: solda tahta, sağda panel; masaüstünde tek ekran */
 .setup-view {
-  min-height: 100vh;
-  padding: 48px 32px;
+  --panel-w: clamp(380px, 36vw, 540px);
+  height: 100vh; height: 100dvh;
+  padding: 10px 16px;
   display: grid;
-  grid-template-columns: minmax(0, 600px) minmax(0, 520px);
-  justify-content: center;
-  align-content: center;
-  gap: 40px 80px;
+  grid-template-columns: minmax(0, 1fr) var(--panel-w);
+  gap: 20px;
 }
-.setup-main { min-width: 0; }
-
-/* Sağdaki örnek pozisyon (sadece geniş ekranlarda) — inceleme ekranındaki tahtanın küçük bir kopyası */
-.setup-preview { align-self: center; }
-.preview-board-btn { display: block; width: 100%; padding: 0; border: 0; background: none; border-radius: 18px; text-align: left; }
-.preview-row { display: flex; gap: 10px; }
-.preview-eval { display: block; width: 22px; }
-.preview-frame { display: block; flex: 1; min-width: 0; padding: clamp(10px, 3%, 18px); transition: box-shadow .15s ease; }
-.preview-board-btn:hover .preview-frame { box-shadow: 0 30px 70px rgba(0,0,0,0.5), 0 0 0 2px var(--accent); }
-.preview-mat { display: block; padding: 3.2%; background: var(--board-frame-mat); border-radius: 8px; }
-.preview-board {
+.demo-col {
+  display: flex; flex-direction: column; gap: 4px;
+  /* tahta + oyuncu şeritleri + açıklama satırı tek ekrana sığsın */
+  width: min(calc(100vh - 100px), calc(100vw - var(--panel-w) - 52px));
+  min-width: 300px;
+  justify-self: center; align-self: center;
+}
+.demo-frame { cursor: pointer; transition: box-shadow .15s ease; }
+.demo-frame:hover, .demo-frame:focus-visible { box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 3px var(--accent); outline: none; }
+.demo-board {
   display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
-  aspect-ratio: 1 / 1; width: 100%;
-  border-radius: 3px; overflow: hidden;
+  width: 100%; height: 100%;
   container-type: inline-size;
 }
-.preview-caption { margin: 16px 0 0 32px; font-size: 14px; color: var(--text-secondary); max-width: 46ch; }
-.preview-caption b { font-family: var(--font-mono); color: #749BBF; font-weight: 600; }
+.demo-caption {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 34px;
+  padding-left: 34px;
+  font-size: 15px; color: var(--text-secondary);
+}
+.demo-caption .cls-badge { width: 24px; height: 24px; font-size: 12px; }
+.demo-move { font-family: var(--font-mono); font-weight: 600; color: var(--text-primary); }
+.demo-label { font-weight: 700; }
+.demo-hint { margin-left: auto; font-size: 13px; color: var(--text-muted); }
 
-.setup-alt { margin: 14px 2px 0; font-size: 14px; color: var(--text-muted); }
+.setup-col {
+  display: flex; flex-direction: column;
+  min-height: 0; height: 100%;
+  overflow: hidden;
+  padding: 20px 22px 14px;
+  background: var(--panel-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+.setup-col > * { flex: none; }
+/* Boş yer varsa içerik dikeyde ortalanır: marka en üstte, açıklama notu en altta */
+.setup-col > .brand { margin-bottom: auto !important; padding-bottom: 18px; }
+.setup-col > .legend { margin-bottom: auto; }
+
+.setup-alt { margin: 10px 2px 0; font-size: 14px; color: var(--text-muted); }
 .link-btn {
   background: none; border: 0; padding: 0;
   color: var(--accent); font-weight: 600;
@@ -121,63 +141,70 @@ button { cursor: pointer; }
 .link-btn:hover { color: #6FE9DA; }
 
 @media (max-width: 1000px) {
-  .setup-view { grid-template-columns: minmax(0, 640px); min-height: 0; align-content: start; padding: 32px 20px 56px; }
-  .setup-preview { display: none; }
+  .setup-view { height: auto; grid-template-columns: minmax(0, 1fr); max-width: 680px; margin: 0 auto; padding: 16px 16px 32px; gap: 16px; }
+  .setup-col { order: 1; height: auto; overflow: visible; }
+  .demo-col { order: 2; width: 100%; min-width: 0; }
 }
 .setup-view.is-hidden { display: none; }
 .brand {
   display: flex; align-items: center; gap: 10px;
   font-weight: 600; font-size: 15px; color: var(--text-secondary);
-  margin-bottom: 36px;
+  margin-bottom: 18px;
 }
 .brand-mark { width: 26px; height: 26px; color: var(--board-light); }
 .setup-title {
   font-weight: 700;
-  font-size: clamp(32px, 3.6vw, 52px);
+  font-size: clamp(26px, 2.6vw, 40px);
   line-height: 1.1;
   letter-spacing: -0.02em;
-  margin: 0 0 14px;
-  max-width: 20ch;
+  margin: 0 0 10px;
+  max-width: 22ch;
 }
 .setup-lede {
   color: var(--text-secondary);
-  font-size: 17px;
+  font-size: 15px;
   max-width: 58ch;
-  margin: 0 0 28px;
+  margin: 0 0 18px;
 }
 
 .setup-panel {
-  background: var(--panel-bg);
+  background: var(--panel-bg-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 16px;
+  flex: 0 1 auto !important;
+  min-height: 0;
+  display: flex; flex-direction: column;
 }
+.setup-panel > * { flex: none; }
+.setup-panel > .tab-content.active { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .tabs-nav {
-  display: inline-flex; gap: 4px;
+  display: flex; gap: 4px; align-self: stretch;
   padding: 4px;
-  background: var(--panel-bg-2);
+  background: var(--panel-bg);
   border-radius: var(--radius-md);
   margin-bottom: 16px;
 }
 .tab-btn {
+  flex: 1; white-space: nowrap;
   background: transparent; border: 0;
   color: var(--text-secondary);
-  font-size: 14px; font-weight: 600;
-  padding: 8px 16px;
+  font-size: 13.5px; font-weight: 600;
+  padding: 8px 6px;
   border-radius: 7px;
 }
 .tab-btn:hover { color: var(--text-primary); }
-.tab-btn.active { background: var(--panel-bg); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.tab-btn.active { background: var(--panel-bg-2); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
 .dropzone-area {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  min-height: 168px;
+  min-height: 120px;
   border: 1.5px dashed var(--line-strong);
   border-radius: 12px;
   padding: 28px 20px;
-  background: var(--panel-bg-2);
+  background: var(--panel-bg);
   cursor: pointer;
   text-align: center;
   transition: border-color .15s ease, background-color .15s ease;
@@ -191,7 +218,7 @@ button { cursor: pointer; }
 
 textarea#pgnInput {
   display: block;
-  width: 100%; min-height: 168px; resize: vertical;
+  width: 100%; min-height: 120px; resize: vertical;
   font-family: var(--font-mono); font-size: 14px; line-height: 1.6;
   padding: 14px 16px;
   border: 1px solid var(--line-strong);
@@ -204,7 +231,7 @@ textarea#pgnInput:focus { outline: none; border-color: var(--accent); }
 
 .config-row {
   display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px;
-  margin-top: 18px;
+  margin-top: 12px;
 }
 .select-group { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
 .setup-label { font-size: 14px; color: var(--text-secondary); }
@@ -224,7 +251,7 @@ select {
 }
 select:focus { outline: none; border-color: var(--accent); }
 
-.setup-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.setup-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
 
 .status-row { margin-top: 18px; display: none; }
 .status-row.active { display: block; }
@@ -239,15 +266,17 @@ select:focus { outline: none; border-color: var(--accent); }
 }
 .error-msg.active { display: block; }
 
-.legend { margin-top: 40px; }
+.legend { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .legend-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
 .legend-list {
   list-style: none; margin: 0; padding: 0;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 20px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px;
 }
-.legend-list li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-secondary); }
+.legend-list li { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-secondary); }
+.legend-list .cls-badge { width: 20px; height: 20px; font-size: 10.5px; }
+.legend-list .cls-badge svg { width: 11px; height: 11px; }
 .legend-list li b { color: var(--text-primary); font-weight: 600; }
-footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-width: 62ch; }
+footer.note { margin-top: auto; padding-top: 10px; font-size: 12.5px; color: var(--text-muted); }
 
 /* Sınıf rozeti (giriş efsanesi, yorum kartı, tahta) */
 .cls-badge {
@@ -687,6 +716,10 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   list-style: none; margin: 12px 0 0; padding: 0;
   display: flex; flex-direction: column; gap: 6px;
   max-height: 420px; overflow-y: auto; overscroll-behavior: contain;
+  min-height: 0;
+}
+@media (min-width: 1001px) {
+  .setup-panel .game-list { max-height: none; flex: 0 1 auto; }
 }
 .game-list:empty { display: none; }
 .game-item {
@@ -731,6 +764,13 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 
 .setup-panel[data-tab="contentAccount"] .config-row,
 .setup-panel[data-tab="contentAccount"] .setup-actions { display: none; }
+
+/* Panel daralınca (ör. 1000–1100 px ekran) kullanıcı adı ve düğme alt alta */
+.setup-panel { container-type: inline-size; }
+@container (max-width: 380px) {
+  .account-row { flex-direction: column; }
+  .account-row .btn { width: 100%; }
+}
 
 /* Taş görselleri (el çizimi set) — pieces/ klasöründe */
 .piece-graphic.r-b { background-image: url("pieces/r-b.png"); }
