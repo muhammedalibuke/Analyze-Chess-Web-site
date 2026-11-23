@@ -1594,6 +1594,7 @@ function goToPly(ply, opts = {}) {
   currentPly = target;
   const fen = state.fens[currentPly];
   const move = currentPly > 0 ? state.perMove[currentPly - 1] : null;
+  setVariationLook(false);
   renderBoard(fen, move, { anim });
   updateCommentary(move, currentPly);
   renderEvalBar(evalAtPly(currentPly));
@@ -1927,6 +1928,7 @@ function variationBack() {
 function renderVariation(opts = {}) {
   if (variation.line) { renderLineView(opts); return; }
   commentaryCard.classList.remove('is-line');
+  setVariationLook(true, 'Deneme modu · ana partiye dön');
   const last = variation.moves[variation.moves.length - 1];
   const display = { from: last.from, to: last.to, cls: last.pending ? null : last.cls };
   renderBoard(last.fenAfter, display, opts);
@@ -1976,7 +1978,7 @@ function renderVariation(opts = {}) {
   back.addEventListener('click', () => { const v = variation; exitVariation(); goToPly(v.returnPly !== undefined ? v.returnPly : v.basePly); });
   commBest.append(commBest.childNodes.length ? ' · ' : '', back);
 
-  plyLabel.textContent = `Deneme: ${n} hamle`;
+  plyLabel.textContent = `Deneme ${n}`;
   firstBtn.disabled = prevBtn.disabled = false;
   nextBtn.disabled = true;
   lastBtn.disabled = false;
@@ -1996,6 +1998,7 @@ function renderCurrent(opts = {}) {
 function renderLineView(opts = {}) {
   const L = variation.line;
   commentaryCard.classList.add('is-line');
+  setVariationLook(true, 'Motorun önerisi · ana partiye dön');
   const last = variation.moves[variation.moves.length - 1];
   const fen = last ? last.fenAfter : L.fenStart;
   const display = last ? { from: last.from, to: last.to, cls: last.engine ? null : last.cls } : null;
@@ -2190,6 +2193,22 @@ function makeLineButton(text, onClick) {
   return b;
 }
 
+// --- Deneme modu görünümü: tahta solar, sarı çerçeve ve "Ana partiye dön" etiketi ---
+const boardFrameEl = document.getElementById('boardFrame');
+const variationPill = document.getElementById('variationPill');
+function setVariationLook(on, text) {
+  boardFrameEl.classList.toggle('is-variation', on);
+  variationPill.classList.toggle('hidden', !on);
+  if (on) variationPill.innerHTML = `<span>${text}</span><span class="pill-x" aria-hidden="true">✕</span>`;
+}
+function returnToGame() {
+  if (!variation) return;
+  const v = variation;
+  exitVariation();
+  goToPly(v.returnPly !== undefined ? v.returnPly : v.basePly);
+}
+variationPill.addEventListener('click', returnToGame);
+
 // --- Taş seçme ve sürükleme ---
 function clearSelection() {
   selectedSq = null;
@@ -2278,7 +2297,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') { stepForward(); e.preventDefault(); }
   else if (e.key === ' ') { if (autoplayTimer) stopAutoplay(); else startAutoplay(); e.preventDefault(); }
   else if (e.key === 'm' || e.key === 'M') toggleSound();
-  else if (e.key === 'Escape') clearSelection();
+  else if (e.key === 'Escape') { if (variation) returnToGame(); else clearSelection(); }
   else if (e.key === 'Home') { navigate(0); e.preventDefault(); }
   else if (e.key === 'End') { navigate(state.fens.length - 1); e.preventDefault(); }
   else if (e.key === 'f' || e.key === 'F') flipBoard();
