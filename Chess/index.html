@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -156,12 +156,12 @@
       </div>
 
       <div class="panel-tabs" role="tablist" aria-label="Analiz görünümü">
-        <button class="panel-tab active" id="tabSummary" data-panel="panelSummary" role="tab" aria-selected="true">Özet</button>
-        <button class="panel-tab" id="tabMoves" data-panel="panelMoves" role="tab" aria-selected="false">Hamleler</button>
+        <button class="panel-tab active" id="tabMoves" data-panel="panelMoves" role="tab" aria-selected="true">Hamleler</button>
+        <button class="panel-tab" id="tabSummary" data-panel="panelSummary" role="tab" aria-selected="false">Özet</button>
       </div>
 
       <!-- Özet: doğruluk, sınıf sayıları, avantaj grafiği -->
-      <div class="panel-body active" id="panelSummary" role="tabpanel">
+      <div class="panel-body" id="panelSummary" role="tabpanel">
         <table class="summary-table" id="accuracyCard">
           <thead>
             <tr>
@@ -188,7 +188,7 @@
       </div>
 
       <!-- Hamleler: seçili hamlenin yorumu ve hamle listesi -->
-      <div class="panel-body" id="panelMoves" role="tabpanel">
+      <div class="panel-body active" id="panelMoves" role="tabpanel">
         <div class="comment-card" id="commentaryCard" aria-live="polite">
           <div class="comment-head">
             <span class="cls-badge" id="commBadge"></span>
@@ -215,6 +215,6 @@
   </div>
       </div>
 
-<script type="module" src="script.js?v=10"></script>
+<script type="module" src="script.js?v=11"></script>
 </body>
 </html>

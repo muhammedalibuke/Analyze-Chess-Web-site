@@ -1331,7 +1331,8 @@ function stepBack() {
 }
 function stepForward() {
   stopAutoplay();
-  if (!variation) navigate(currentPly + 1);
+  if (!variation) { navigate(currentPly + 1); return; }
+  if (variation.line) { stopLine(); if (variation.line.status === 'playing') variation.line.status = 'paused'; lineStepForward(); }
 }
 document.getElementById('startReviewBtn').addEventListener('click', () => navigate(1));
 
@@ -1343,7 +1344,8 @@ function showReview() {
   renderMoveList();
   renderAccuracy();
   renderPlayers();
-  showPanel('panelSummary');
+  showPanel('panelMoves');            // önce hamle kutusu açılsın
+  currentPly = Math.min(1, state.fens.length - 1); // ilk hamle seçili
   goToPly(currentPly);
   syncAnalysisHeight();
   window.scrollTo(0, 0);
@@ -1534,6 +1536,7 @@ function moveNumberLabel(ply, color) {
 }
 
 function updateCommentary(move, ply) {
+  commentaryCard.classList.remove('is-line');
   const prevFen = ply > 0 ? state.fens[ply - 1] : null;
   commPvContainer.classList.add('hidden');
   commBest.textContent = '';
@@ -1543,7 +1546,10 @@ function updateCommentary(move, ply) {
     commLabel.textContent = 'Başlangıç konumu';
     commEval.textContent = formatScore(evalAtPly(0));
     commTitle.textContent = '';
-    commText.textContent = 'Hamleler arasında ← → tuşlarıyla, listeden ya da aşağıdaki grafiğe tıklayarak gezinebilirsin.';
+    commText.textContent = 'Hamleler arasında ← → tuşlarıyla ya da listeden gezinebilirsin; taşları sürükleyip kendin de oynayabilirsin.';
+    commBest.append(makeLineButton('Motorun devamını oynat', () => playLine({
+      basePly: 0, prefix: [], fenStart: state.fens[0], label: 'Motorun önerdiği devam'
+    })));
     return;
   }
   const meta = CLASS_META[move.cls] || CLASS_META.unknown;
@@ -1562,13 +1568,16 @@ function updateCommentary(move, ply) {
     b.textContent = move.bestSan;
     commBest.appendChild(b);
   }
-  if (!isGood && move.pv && prevFen) {
-    const pv = formatPv(prevFen, move.pv);
-    if (pv) {
-      commPvText.textContent = pv;
-      commPvContainer.title = pv; // tek satıra sığmazsa tamamı fareyle üzerine gelince görünür
-      commPvContainer.classList.remove('hidden');
-    }
+  // "Böyle oynansaydı?": hatalı hamlede daha iyisini, diğerlerinde motorun devamını tahtada oynat
+  if (!isGood && move.bestSan && move.bestSan !== move.san && prevFen) {
+    commBest.append(' ', makeLineButton('Daha iyisini oynat', () => playLine({
+      basePly: ply - 1, prefix: [], fenStart: prevFen,
+      label: `${moveNumberLabel(ply, move.color)} ${move.bestSan} oynansaydı`
+    })));
+  } else if (ply < state.fens.length - 1) {
+    commBest.append(makeLineButton('Motorun devamını oynat', () => playLine({
+      basePly: ply, prefix: [], fenStart: state.fens[ply], label: 'Motorun önerdiği devam'
+    })));
   }
 }
 
@@ -1810,6 +1819,7 @@ function currentFen() {
   return state.fens[currentPly];
 }
 function exitVariation() {
+  stopLine();
   if (!variation) return;
   variation = null;
   clearSelection();
@@ -1876,6 +1886,7 @@ function playUserMove(from, to, dragged) {
       return true;
     }
   }
+  if (variation && variation.line) { stopLine(); variation.line = null; }
   if (!variation) variation = { basePly: currentPly, moves: [] };
   const g = new Chess(fen);
   g.move(m.san);
@@ -1890,7 +1901,18 @@ function playUserMove(from, to, dragged) {
 
 function variationBack() {
   if (!variation) return;
+  stopLine();
+  const L = variation.line;
+  if (L && variation.moves.length > L.start) { L.next--; L.status = 'paused'; }
+  if (L && variation.moves.length <= L.start && L.start === 0) {
+    // Devamın başındayız: ana partiye dön
+    const base = variation.basePly;
+    exitVariation();
+    goToPly(base);
+    return;
+  }
   const popped = variation.moves.pop();
+  if (!popped) return;
   if (!variation.moves.length) {
     const base = variation.basePly;
     variation = null;
@@ -1903,6 +1925,8 @@ function variationBack() {
 
 // Deneme modundaki tahtayı ve paneli çizer
 function renderVariation(opts = {}) {
+  if (variation.line) { renderLineView(opts); return; }
+  commentaryCard.classList.remove('is-line');
   const last = variation.moves[variation.moves.length - 1];
   const display = { from: last.from, to: last.to, cls: last.pending ? null : last.cls };
   renderBoard(last.fenAfter, display, opts);
@@ -1938,13 +1962,18 @@ function renderVariation(opts = {}) {
       const b = document.createElement('b');
       b.textContent = last.bestSan;
       commBest.appendChild(b);
+      const v = variation;
+      commBest.append(' ', makeLineButton('Daha iyisini oynat', () => playLine({
+        basePly: v.basePly, prefix: v.moves.slice(0, -1), fenStart: last.fenBefore,
+        label: `${moveNumberFromFen(last.fenBefore)} ${last.bestSan} oynansaydı`
+      })));
     }
   }
   const back = document.createElement('button');
   back.type = 'button';
   back.className = 'link-btn variation-back';
   back.textContent = 'Ana partiye dön';
-  back.addEventListener('click', () => { const base = variation.basePly; exitVariation(); goToPly(base); });
+  back.addEventListener('click', () => { const v = variation; exitVariation(); goToPly(v.returnPly !== undefined ? v.returnPly : v.basePly); });
   commBest.append(commBest.childNodes.length ? ' · ' : '', back);
 
   plyLabel.textContent = `Deneme: ${n} hamle`;
@@ -1959,8 +1988,206 @@ function moveNumberFromFen(fen) {
   return parts[1] === 'w' ? `${parts[5]}.` : `${parts[5]}...`;
 }
 function renderCurrent(opts = {}) {
-  if (variation && variation.moves.length) renderVariation(opts);
+  if (variation && (variation.moves.length || variation.line)) renderVariation(opts);
   else goToPly(currentPly, opts);
+}
+
+// Motor devamı oynatılırken tahta ve yorum kartı
+function renderLineView(opts = {}) {
+  const L = variation.line;
+  commentaryCard.classList.add('is-line');
+  const last = variation.moves[variation.moves.length - 1];
+  const fen = last ? last.fenAfter : L.fenStart;
+  const display = last ? { from: last.from, to: last.to, cls: last.engine ? null : last.cls } : null;
+  renderBoard(fen, display, opts);
+  renderEvalBar(L.eval !== null ? L.eval : evalAtPly(variation.basePly));
+  arrowOverlay.innerHTML = '';
+  const playedInLine = variation.moves.length - L.start;
+  // Sıradaki motor hamlesini ok ile göster
+  if (L.next < L.seq.length && L.status !== 'loading') drawArrow(L.seq[L.next].from, L.seq[L.next].to, CLASS_META.best.color);
+
+  commentaryCard.style.setProperty('--cls', CLASS_META.best.color);
+  fillBadge(commBadge, 'best');
+  commTitle.textContent = '';
+  commLabel.textContent = L.label;
+  commEval.textContent = L.eval !== null ? formatScore(L.eval) : '';
+  commPvContainer.classList.add('hidden');
+  commBest.textContent = '';
+  if (L.status === 'loading') commText.textContent = 'Motorun önerdiği devam hazırlanıyor…';
+  else if (L.status === 'error') commText.textContent = 'Bu pozisyon için bir devam bulunamadı.';
+  else {
+    commText.textContent = '';
+    for (const part of lineText(L, playedInLine)) {
+      const span = document.createElement('span');
+      span.className = 'line-move' + (part.current ? ' is-current' : part.played ? ' is-played' : '');
+      span.textContent = part.text;
+      commText.append(span, ' ');
+    }
+  }
+  if (L.status === 'done' || L.status === 'paused') commBest.append(makeLineButton('Tekrar oynat', replayLine), ' ');
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'link-btn variation-back';
+  back.textContent = 'Ana partiye dön';
+  back.addEventListener('click', () => { const v = variation; exitVariation(); goToPly(v.returnPly !== undefined ? v.returnPly : v.basePly); });
+  commBest.append(back);
+
+  plyLabel.textContent = L.seq.length ? `Öneri ${playedInLine}/${L.seq.length}` : 'Öneri';
+  firstBtn.disabled = false;
+  prevBtn.disabled = false;
+  nextBtn.disabled = L.next >= L.seq.length;
+  lastBtn.disabled = false;
+  const prevActive = moveListEl.querySelector('.move-chip.active');
+  if (prevActive) prevActive.classList.remove('active');
+}
+
+// =========================================================
+// "BÖYLE OYNANSAYDI?" — motorun önerdiği devamı tahtada oynatır
+// =========================================================
+const LINE_MAX = 10;     // en fazla kaç yarım hamle oynatılır
+const LINE_STEP_MS = 900;
+const lineCache = new Map();
+let lineTimer = null;
+
+// Bir pozisyon için motorun en iyi devamı (UCI listesi) ve puanı:
+// önce ChessDB (derin), sonra Lichess bulut analizi, en son yerel Stockfish.
+async function fetchLine(fen) {
+  if (lineCache.has(fen)) return lineCache.get(fen);
+  const p = (async () => {
+    const stmWhite = fen.split(' ')[1] === 'w';
+    try {
+      const r = await fetch(`https://www.chessdb.cn/cdb.php?action=querypv&board=${encodeURIComponent(fen)}&json=1`);
+      if (r.ok) {
+        const d = await r.json();
+        if (d.status === 'ok' && Array.isArray(d.pv) && d.pv.length) return { moves: d.pv, score: { type: 'cp', value: d.score } };
+      }
+    } catch (e) { /* sıradaki kaynağa geç */ }
+    try {
+      const r = await fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`);
+      if (r.ok) {
+        const d = await r.json();
+        if (d.pvs && d.pvs.length) {
+          const pv = d.pvs[0], sign = stmWhite ? 1 : -1;
+          return {
+            moves: pv.moves.split(' '),
+            score: pv.mate !== undefined && pv.mate !== null ? { type: 'mate', value: sign * pv.mate } : { type: 'cp', value: sign * (pv.cp || 0) }
+          };
+        }
+      }
+    } catch (e) { /* yerel motora geç */ }
+    const res = await pool.analyze(fen, 14);
+    return { moves: (res.pv || res.bestMoveUci || '').split(/\s+/).filter(Boolean), score: res.score };
+  })();
+  lineCache.set(fen, p);
+  try { return await p; } catch (e) { lineCache.delete(fen); throw e; }
+}
+
+// UCI hamleyi o pozisyondaki yasal hamleye çevirir (Lichess'in e1h1 rok yazımı dahil)
+function uciToLegalMove(g, uci) {
+  const from = uci.slice(0, 2), to = uci.slice(2, 4), promo = uci[4];
+  const legal = g.moves({ verbose: true });
+  let m = legal.find(x => x.from === from && x.to === to && (!promo || x.promotion === promo));
+  if (!m) {
+    const piece = g.get(from);
+    if (piece && piece.type === 'k') {
+      const fix = { h1: 'g1', a1: 'c1', h8: 'g8', a8: 'c8' }[to];
+      if (fix) m = legal.find(x => x.from === from && x.to === fix);
+    }
+  }
+  return m || null;
+}
+
+function stopLine() {
+  if (lineTimer) clearTimeout(lineTimer);
+  lineTimer = null;
+}
+
+// basePly: ana partide hangi pozisyondan ayrılıyoruz; prefix: önceden yapılmış deneme hamleleri
+async function playLine({ basePly, prefix, fenStart, label }) {
+  stopAutoplay();
+  stopLine();
+  clearSelection();
+  // returnPly: "Ana partiye dön" denince gidilecek hamle (kullanıcının bulunduğu yer)
+  const returnPly = variation && variation.returnPly !== undefined ? variation.returnPly : currentPly;
+  const myVar = { basePly, returnPly, moves: prefix.slice(), line: { label, status: 'loading', start: prefix.length, seq: [], next: 0, fenStart, eval: null } };
+  variation = myVar;
+  showPanel('panelMoves');
+  renderCurrent();
+  let line = null;
+  try { line = await fetchLine(fenStart); } catch (e) { line = null; }
+  if (variation !== myVar) return; // kullanıcı bu arada başka yere geçti
+  if (!line || !line.moves.length) {
+    myVar.line.status = 'error';
+    renderCurrent();
+    return;
+  }
+  const g = new Chess(fenStart);
+  for (const u of line.moves.slice(0, LINE_MAX)) {
+    const m = uciToLegalMove(g, u);
+    if (!m) break;
+    const before = g.fen();
+    g.move(m.san);
+    myVar.line.seq.push({ ...m, fenBefore: before, fenAfter: g.fen(), engine: true, cls: null, pending: false, evalAfter: null });
+  }
+  myVar.line.eval = normalizeScore(line.score, fenStart.split(' ')[1] === 'w');
+  myVar.line.status = 'playing';
+  const step = () => {
+    if (variation !== myVar || myVar.line.status !== 'playing') return;
+    if (!lineStepForward()) { myVar.line.status = 'done'; renderCurrent(); return; }
+    lineTimer = setTimeout(step, LINE_STEP_MS);
+  };
+  lineTimer = setTimeout(step, 300);
+}
+
+// Devamdaki bir sonraki hamleyi oynat (otomatik ya da → tuşuyla)
+function lineStepForward() {
+  const L = variation && variation.line;
+  if (!L || L.next >= L.seq.length) return false;
+  const vm = L.seq[L.next++];
+  variation.moves.push(vm);
+  if (L.next >= L.seq.length && L.status === 'playing') L.status = 'done';
+  renderCurrent({ anim: animationFor(vm, true) });
+  Sound.play(soundKindFor(vm));
+  return true;
+}
+
+function replayLine() {
+  const L = variation && variation.line;
+  if (!L) return;
+  stopLine();
+  variation.moves.length = L.start;
+  L.next = 0;
+  L.status = 'playing';
+  renderCurrent();
+  const myVar = variation;
+  const step = () => {
+    if (variation !== myVar || L.status !== 'playing') return;
+    if (!lineStepForward()) { L.status = 'done'; renderCurrent(); return; }
+    lineTimer = setTimeout(step, LINE_STEP_MS);
+  };
+  lineTimer = setTimeout(step, 300);
+}
+
+// Satranç notasyonuyla devam metni: "10...Qb4+ 11.Nc3 Qxb3" (son oynanan kalın)
+function lineText(L, played) {
+  const parts = [];
+  for (let i = 0; i < L.seq.length; i++) {
+    const m = L.seq[i];
+    const [, color, , , , num] = m.fenBefore.split(' ');
+    const prefix = color === 'w' ? `${num}.` : (i === 0 ? `${num}...` : '');
+    parts.push({ text: prefix + m.san, played: i < played, current: i === played - 1 });
+  }
+  return parts;
+}
+
+function makeLineButton(text, onClick) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'line-btn';
+  b.innerHTML = '<svg aria-hidden="true"><use href="#i-play"/></svg>';
+  b.append(text);
+  b.addEventListener('click', onClick);
+  return b;
 }
 
 // --- Taş seçme ve sürükleme ---
