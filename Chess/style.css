@@ -545,7 +545,7 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
   .summary-table th, .summary-table td { padding: 3px 0; }
   .acc-box { font-size: 16px; padding: 4px 8px; }
   #evalGraph { height: 56px; }
-  .comment-text { display: none; }
+  .comment-card:not(.is-line) .comment-text { display: none; }
 }
 
 /* ---------- Dar ekran: alt alta (üst bilgi, tahta, gezinme, sekmeler) ---------- */
@@ -611,6 +611,20 @@ footer.note { margin-top: 40px; font-size: 13px; color: var(--text-muted); max-w
 @media (prefers-reduced-motion: reduce) {
   .piece-ghost, .piece-fade-in, .badge-pop { animation: none !important; }
 }
+
+/* "Böyle oynansaydı?" düğmesi ve devam metni */
+.line-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 2px 6px 2px 0; padding: 5px 12px 5px 9px;
+  border-radius: 99px; border: 0;
+  background: var(--accent); color: var(--accent-ink);
+  font-size: 13.5px; font-weight: 700;
+}
+.line-btn:hover { background: #4BE3D1; }
+.line-btn svg { width: 13px; height: 13px; }
+.line-move { font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); white-space: nowrap; }
+.line-move.is-played { color: var(--text-secondary); }
+.line-move.is-current { color: var(--text-primary); font-weight: 700; background: rgba(129, 182, 76, .22); border-radius: 4px; padding: 0 3px; }
 
 /* ---------- Hesaptan getir ---------- */
 .account-form { display: flex; flex-direction: column; gap: 12px; }

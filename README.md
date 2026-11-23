@@ -41,6 +41,9 @@ Uygulama dosyaları `Chess/` klasöründedir (`index.html`, `style.css`, `script
   farklı bir hamle yaparsan "deneme" moduna geçilir; motor hamleni değerlendirip sınıfını (En iyi,
   Hata…) ve daha iyisini gösterir. "Ana partiye dön" ya da ← ile geri dönülür.
 - **Tahtayı çevir:** F tuşu ya da panel başındaki düğme.
+- **Böyle oynansaydı?** Hatalı bir hamlede "Daha iyisini oynat", diğer hamlelerde "Motorun devamını
+  oynat" düğmesi motorun önerdiği devamı (en fazla 10 yarım hamle) tahtada taşları kaydırarak oynatır.
+  Devam ChessDB'den (yoksa Lichess, yoksa yerel Stockfish) alınır; ← → ile adım adım gezilebilir.
 
 ## Hamleler nasıl sınıflandırılır?
 
