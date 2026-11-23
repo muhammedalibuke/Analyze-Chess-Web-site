@@ -32,6 +32,16 @@ Uygulama dosyaları `Chess/` klasöründedir (`index.html`, `style.css`, `script
 
 İnceleme ekranındaki **PGN'i indir** düğmesi partiyi `.pgn` dosyası olarak kaydeder.
 
+## İnceleme ekranında neler yapılabilir?
+
+- **Gezinme:** ← → tuşları, hamle listesi ya da grafik. Taşlar kayarak hareket eder; hamle, taş
+  alma, şah ve rok için ayrı sesler çalar (M ile ses aç/kapa).
+- **Otomatik oynat:** ▶ düğmesi ya da Boşluk tuşu.
+- **Kendin oyna:** bir taşı sürükle ya da tıkla, gidebileceği kareler noktayla gösterilir. Partiden
+  farklı bir hamle yaparsan "deneme" moduna geçilir; motor hamleni değerlendirip sınıfını (En iyi,
+  Hata…) ve daha iyisini gösterir. "Ana partiye dön" ya da ← ile geri dönülür.
+- **Tahtayı çevir:** F tuşu ya da panel başındaki düğme.
+
 ## Hamleler nasıl sınıflandırılır?
 
 Chess.com'un "beklenen puan" sistemiyle: hamleyi yapanın kazanma beklentisinin (0–1) en iyi

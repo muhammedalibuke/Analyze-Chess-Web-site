@@ -1320,8 +1320,18 @@ function showPanel(id) {
 for (const t of panelTabs) t.addEventListener('click', () => showPanel(t.dataset.panel));
 // Kullanıcı hamleler arasında gezinince hamle görünümüne geç
 function navigate(ply) {
+  stopAutoplay();
+  exitVariation();
   if (!document.getElementById('panelMoves').classList.contains('active')) showPanel('panelMoves');
-  goToPly(ply);
+  goToPly(ply, { animate: true });
+}
+function stepBack() {
+  stopAutoplay();
+  if (variation) variationBack(); else navigate(currentPly - 1);
+}
+function stepForward() {
+  stopAutoplay();
+  if (!variation) navigate(currentPly + 1);
 }
 document.getElementById('startReviewBtn').addEventListener('click', () => navigate(1));
 
@@ -1352,9 +1362,9 @@ if (window.ResizeObserver) {
   ro.observe(evalGraphEl);
 }
 
-function renderBoard(fen, move) {
+function renderBoard(fen, move, opts = {}) {
   const board = new Chess(fen).board();
-  const meta = move ? (CLASS_META[move.cls] || CLASS_META.unknown) : null;
+  const meta = move ? (CLASS_META[move.cls] || { color: '#E8C468' }) : null;
   boardEl.innerHTML = '';
   for (let visRow = 0; visRow < 8; visRow++) {
     for (let visCol = 0; visCol < 8; visCol++) {
@@ -1364,6 +1374,7 @@ function renderBoard(fen, move) {
       const sqName = String.fromCharCode(97 + col) + (8 - row);
       const div = document.createElement('div');
       div.className = 'sq ' + ((row + col) % 2 === 0 ? 'light' : 'dark');
+      div.dataset.sq = sqName;
       if (move && (sqName === move.from || sqName === move.to)) {
         div.classList.add(sqName === move.to ? 'hl-to' : 'hl-from');
         div.style.setProperty('--hl-color', meta.color);
@@ -1373,7 +1384,7 @@ function renderBoard(fen, move) {
         graphic.className = `piece-graphic ${cellPiece.type}-${cellPiece.color}`;
         div.appendChild(graphic);
       }
-      if (move && sqName === move.to) div.appendChild(makeBadge(move.cls, 'board-badge'));
+      if (move && move.cls && sqName === move.to) div.appendChild(makeBadge(move.cls, 'board-badge' + (opts.anim ? ' badge-pop' : '')));
       // Koordinatlar karelerin içinde (Chess.com gibi): sol sütunda rakam, alt satırda harf
       if (visCol === 0) {
         const rk = document.createElement('span');
@@ -1391,6 +1402,7 @@ function renderBoard(fen, move) {
     }
   }
   renderCoordLabels();
+  runBoardAnimation(opts.anim);
 }
 
 function renderCoordLabels() {
@@ -1560,12 +1572,20 @@ function updateCommentary(move, ply) {
   }
 }
 
-function goToPly(ply) {
+function goToPly(ply, opts = {}) {
   if (!state) return;
-  currentPly = Math.max(0, Math.min(state.fens.length - 1, ply));
+  const target = Math.max(0, Math.min(state.fens.length - 1, ply));
+  // Tek hamlelik adımlarda taş kayarak gider (ileri) ya da geri gelir; ses çalar
+  let anim = opts.anim || null;
+  let stepMove = null;
+  if (opts.animate && target === currentPly + 1) { stepMove = state.moves[currentPly]; anim = animationFor(stepMove, true); }
+  else if (opts.animate && target === currentPly - 1) { stepMove = state.moves[target]; anim = animationFor(stepMove, false); }
+  else if (opts.sound && target === currentPly + 1) stepMove = state.moves[currentPly];
+  if (stepMove && (opts.animate || opts.sound)) Sound.play(soundKindFor(stepMove));
+  currentPly = target;
   const fen = state.fens[currentPly];
   const move = currentPly > 0 ? state.perMove[currentPly - 1] : null;
-  renderBoard(fen, move);
+  renderBoard(fen, move, { anim });
   updateCommentary(move, currentPly);
   renderEvalBar(evalAtPly(currentPly));
   renderEvalGraph();
@@ -1608,19 +1628,430 @@ function scrollChipIntoView(chip) {
 function flipBoard() {
   boardFlipped = !boardFlipped;
   renderPlayers();
-  goToPly(currentPly);
+  clearSelection();
+  renderCurrent();
 }
 
+// =========================================================
+// CANLI TAHTA: kayan taşlar, sesler, otomatik oynatma ve kendin oynama
+// =========================================================
+const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SLIDE_MS = 230;
+
+// --- Sesler: dosya indirmeden Web Audio ile üretilen ahşap "tık" sesleri ---
+const Sound = {
+  ctx: null,
+  on: (() => { try { return localStorage.getItem('satranc-ses') !== '0'; } catch (e) { return true; } })(),
+  ensure() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      this.ctx = new AC();
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  knock(at, freq, gainVal, dur) {
+    const ctx = this.ctx;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 1.4;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(gainVal, at);
+    g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+    src.connect(bp).connect(g).connect(ctx.destination);
+    src.start(at);
+  },
+  tone(at, freq, gainVal, dur) {
+    const ctx = this.ctx;
+    const o = ctx.createOscillator();
+    o.type = 'sine'; o.frequency.value = freq;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(gainVal, at + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g).connect(ctx.destination);
+    o.start(at); o.stop(at + dur + 0.02);
+  },
+  play(kind) {
+    if (!this.on) return;
+    const ctx = this.ensure();
+    if (!ctx) return;
+    const t = ctx.currentTime + 0.005;
+    if (kind === 'capture') { this.knock(t, 1100, 1.0, 0.09); this.knock(t + 0.035, 700, 0.7, 0.08); }
+    else if (kind === 'castle') { this.knock(t, 1500, 0.7, 0.06); this.knock(t + 0.09, 1300, 0.7, 0.06); }
+    else this.knock(t, 1600, 0.75, 0.06);
+    if (kind === 'check') this.tone(t + 0.02, 880, 0.12, 0.18);
+    if (kind === 'end') { this.tone(t + 0.05, 523, 0.1, 0.25); this.tone(t + 0.2, 784, 0.1, 0.35); }
+  }
+};
+function soundKindFor(m) {
+  if (!m) return 'move';
+  if (m.san && m.san.includes('#')) return 'end';
+  if (m.san && m.san.includes('+')) return 'check';
+  if (m.flags && (m.flags.includes('k') || m.flags.includes('q'))) return 'castle';
+  if (m.captured) return 'capture';
+  return 'move';
+}
+
+// --- Kare koordinatı yardımcıları (tahta çevrilmesine göre görsel satır/sütun) ---
+function visualColRow(sq) {
+  const file = sq.charCodeAt(0) - 97, rank = parseInt(sq[1], 10);
+  return boardFlipped ? { c: 7 - file, r: rank - 1 } : { c: file, r: 8 - rank };
+}
+function rookCastleSquares(m) {
+  const rank = m.color === 'w' ? '1' : '8';
+  if (m.flags.includes('k')) return { from: 'h' + rank, to: 'f' + rank };
+  if (m.flags.includes('q')) return { from: 'a' + rank, to: 'd' + rank };
+  return null;
+}
+// Bir hamle ileri/geri oynanırken hangi taşın nereden kayacağını hesaplar
+function animationFor(m, forward) {
+  if (!m) return null;
+  const slides = [], fadeOut = [], fadeIn = [];
+  const rook = rookCastleSquares(m);
+  const capSq = m.captured ? (m.flags.includes('e') ? m.to[0] + m.from[1] : m.to) : null;
+  const oppColor = m.color === 'w' ? 'b' : 'w';
+  if (forward) {
+    slides.push({ from: m.from, to: m.to });
+    if (rook) slides.push({ from: rook.from, to: rook.to });
+    if (capSq) fadeOut.push({ sq: capSq, cls: `${m.captured}-${oppColor}` });
+  } else {
+    slides.push({ from: m.to, to: m.from });
+    if (rook) slides.push({ from: rook.to, to: rook.from });
+    if (capSq) fadeIn.push({ sq: capSq });
+  }
+  return { slides, fadeOut, fadeIn };
+}
+function runBoardAnimation(anim) {
+  if (!anim || prefersReducedMotion) return;
+  const size = boardEl.clientWidth / 8;
+  for (const s of anim.slides) {
+    const el = boardEl.querySelector(`.sq[data-sq="${s.to}"] .piece-graphic`);
+    if (!el) continue;
+    const a = visualColRow(s.from), b = visualColRow(s.to);
+    el.style.transition = 'none';
+    el.style.transform = `translate(${(a.c - b.c) * size}px, ${(a.r - b.r) * size}px)`;
+    el.style.zIndex = '20';
+    el.getBoundingClientRect(); // başlangıç konumunu uygula
+    el.style.transition = `transform ${SLIDE_MS}ms cubic-bezier(.33,.1,.25,1)`;
+    el.style.transform = '';
+    setTimeout(() => { el.style.zIndex = ''; el.style.transition = ''; }, SLIDE_MS + 30);
+  }
+  for (const f of anim.fadeOut) {
+    const sqEl = boardEl.querySelector(`.sq[data-sq="${f.sq}"]`);
+    if (!sqEl) continue;
+    const ghost = document.createElement('div');
+    ghost.className = `piece-graphic ${f.cls} piece-ghost`;
+    sqEl.insertBefore(ghost, sqEl.firstChild);
+    setTimeout(() => ghost.remove(), SLIDE_MS + 120);
+  }
+  for (const f of anim.fadeIn) {
+    const el = boardEl.querySelector(`.sq[data-sq="${f.sq}"] .piece-graphic`);
+    if (el) el.classList.add('piece-fade-in');
+  }
+}
+
+// --- Otomatik oynatma ---
+let autoplayTimer = null;
+const playBtn = document.getElementById('playBtn');
+const soundBtn = document.getElementById('soundBtn');
+function stopAutoplay() {
+  if (autoplayTimer) clearInterval(autoplayTimer);
+  autoplayTimer = null;
+  playBtn.classList.remove('is-playing');
+  playBtn.setAttribute('aria-label', 'Otomatik oynat');
+  playBtn.title = 'Otomatik oynat (Boşluk)';
+}
+function startAutoplay() {
+  if (!state) return;
+  exitVariation();
+  if (currentPly >= state.fens.length - 1) goToPly(0);
+  showPanel('panelMoves');
+  playBtn.classList.add('is-playing');
+  playBtn.setAttribute('aria-label', 'Durdur');
+  playBtn.title = 'Durdur (Boşluk)';
+  const step = () => {
+    if (!state || currentPly >= state.fens.length - 1) { stopAutoplay(); return; }
+    goToPly(currentPly + 1, { animate: true });
+  };
+  step();
+  autoplayTimer = setInterval(step, 1100);
+}
+playBtn.addEventListener('click', () => (autoplayTimer ? stopAutoplay() : startAutoplay()));
+function renderSoundBtn() {
+  soundBtn.classList.toggle('is-off', !Sound.on);
+  soundBtn.setAttribute('aria-label', Sound.on ? 'Sesi kapat' : 'Sesi aç');
+  soundBtn.title = Sound.on ? 'Sesi kapat (M)' : 'Sesi aç (M)';
+  soundBtn.querySelector('use').setAttribute('href', Sound.on ? '#i-sound' : '#i-mute');
+}
+function toggleSound() {
+  Sound.on = !Sound.on;
+  try { localStorage.setItem('satranc-ses', Sound.on ? '1' : '0'); } catch (e) { /* yok say */ }
+  if (Sound.on) Sound.play('move');
+  renderSoundBtn();
+}
+soundBtn.addEventListener('click', toggleSound);
+renderSoundBtn();
+
+// --- Kendin oyna: deneme hamleleri (varyant) ---
+// variation = { basePly, moves: [{ from, to, san, flags, captured, color, promotion, fenBefore, fenAfter, cls, evalAfter, bestSan }] }
+let variation = null;
+let selectedSq = null;
+const analysisCache = new Map();
+
+function currentFen() {
+  if (variation && variation.moves.length) return variation.moves[variation.moves.length - 1].fenAfter;
+  return state.fens[currentPly];
+}
+function exitVariation() {
+  if (!variation) return;
+  variation = null;
+  clearSelection();
+}
+
+async function analyzeFenOnce(fen) {
+  if (analysisCache.has(fen)) return analysisCache.get(fen);
+  const p = (async () => {
+    try {
+      const cloud = await getHybridAnalysis(fen);
+      if (cloud) return cloud;
+    } catch (e) { /* buluta ulaşılamadı, yerel motora geç */ }
+    return pool.analyze(fen, 12);
+  })();
+  analysisCache.set(fen, p);
+  try { return await p; } catch (e) { analysisCache.delete(fen); throw e; }
+}
+
+async function evaluateVariationMove(vm) {
+  try {
+    const [before, after] = await Promise.all([analyzeFenOnce(vm.fenBefore), analyzeFenOnce(vm.fenAfter)]);
+    if (!before || !before.score || !after || !after.score) throw new Error('analiz yok');
+    const uci = vm.from + vm.to + (vm.promotion || '');
+    const bestCp = clampEval(scoreForSideToMove(before.score));
+    const playedCp = clampEval(before.moveScores && before.moveScores[uci]
+      ? scoreForSideToMove(before.moveScores[uci])
+      : -scoreForSideToMove(after.score));
+    const epBefore = expectedPoints(bestCp), epAfter = expectedPoints(playedCp);
+    const epLoss = Math.max(0, epBefore - epAfter);
+    const gapEp = before.score2 ? Math.max(0, expectedPoints(bestCp) - expectedPoints(clampEval(scoreForSideToMove(before.score2)))) : null;
+    const isBest = uci === before.bestMoveUci || epLoss <= 0.0005;
+    vm.cls = classifyMove({
+      epLoss, epBefore, epAfter, isBest, gapEp,
+      sac: epLoss <= 0.02 ? isPieceSacrifice(vm.fenBefore, vm) : false,
+      legalCount: new Chess(vm.fenBefore).moves().length, isRecapture: false,
+      prevOppCls: null, ourEpBeforeOppMove: null
+    });
+    const afterWhite = vm.fenAfter.split(' ')[1] === 'w';
+    vm.evalAfter = normalizeScore(after.score, afterWhite);
+    vm.evalBefore = normalizeScore(before.score, !afterWhite);
+    vm.bestSan = uciToSan(vm.fenBefore, before.bestMoveUci);
+    vm.pv = before.pv || '';
+  } catch (e) {
+    vm.cls = 'unknown';
+  }
+  vm.pending = false;
+  if (variation && variation.moves[variation.moves.length - 1] === vm) renderCurrent();
+}
+
+function playUserMove(from, to, dragged) {
+  if (!state) return false;
+  const fen = currentFen();
+  const legal = new Chess(fen).moves({ verbose: true }).filter(m => m.from === from && m.to === to);
+  if (!legal.length) return false;
+  stopAutoplay();
+  const m = legal.find(x => !x.promotion || x.promotion === 'q') || legal[0]; // terfide otomatik vezir
+  clearSelection();
+  // Partide oynanan hamlenin aynısıysa ana hatta ilerle
+  if (!variation && currentPly < state.fens.length - 1) {
+    const next = state.moves[currentPly];
+    if (next.from === m.from && next.to === m.to && (next.promotion || '') === (m.promotion || '')) {
+      showPanel('panelMoves');
+      goToPly(currentPly + 1, { animate: !dragged, sound: true });
+      return true;
+    }
+  }
+  if (!variation) variation = { basePly: currentPly, moves: [] };
+  const g = new Chess(fen);
+  g.move(m.san);
+  const vm = { ...m, fenBefore: fen, fenAfter: g.fen(), cls: null, pending: true, evalAfter: null };
+  variation.moves.push(vm);
+  showPanel('panelMoves');
+  renderCurrent({ anim: dragged ? null : animationFor(vm, true) });
+  Sound.play(soundKindFor(vm));
+  evaluateVariationMove(vm);
+  return true;
+}
+
+function variationBack() {
+  if (!variation) return;
+  const popped = variation.moves.pop();
+  if (!variation.moves.length) {
+    const base = variation.basePly;
+    variation = null;
+    goToPly(base, { anim: animationFor(popped, false) });
+  } else {
+    renderCurrent({ anim: animationFor(popped, false) });
+  }
+  Sound.play(soundKindFor(popped));
+}
+
+// Deneme modundaki tahtayı ve paneli çizer
+function renderVariation(opts = {}) {
+  const last = variation.moves[variation.moves.length - 1];
+  const display = { from: last.from, to: last.to, cls: last.pending ? null : last.cls };
+  renderBoard(last.fenAfter, display, opts);
+  let ev = last.evalAfter;
+  for (let i = variation.moves.length - 1; ev === null && i >= 0; i--) ev = variation.moves[i].evalAfter;
+  renderEvalBar(ev === null ? evalAtPly(variation.basePly) : ev);
+  arrowOverlay.innerHTML = '';
+  if (!last.pending && last.cls && !GOOD_CLASSES.includes(last.cls) && last.bestSan && last.bestSan !== last.san) {
+    const best = new Chess(last.fenBefore).moves({ verbose: true }).find(mv => mv.san === last.bestSan);
+    if (best) drawArrow(best.from, best.to, CLASS_META.best.color);
+  }
+  // Yorum kartı
+  commPvContainer.classList.add('hidden');
+  commBest.textContent = '';
+  const n = variation.moves.length;
+  commTitle.textContent = `${moveNumberFromFen(last.fenBefore)} ${last.san}`;
+  if (last.pending) {
+    commentaryCard.style.removeProperty('--cls');
+    commBadge.textContent = '';
+    commLabel.textContent = 'Senin hamlen';
+    commEval.textContent = '';
+    commText.textContent = 'Motor değerlendiriyor…';
+  } else {
+    const meta = CLASS_META[last.cls] || CLASS_META.unknown;
+    commentaryCard.style.setProperty('--cls', meta.color);
+    fillBadge(commBadge, last.cls);
+    commLabel.textContent = meta.label;
+    commEval.textContent = last.evalBefore !== undefined && last.evalBefore !== null && last.evalAfter !== null
+      ? `${formatScore(last.evalBefore)} → ${formatScore(last.evalAfter)}` : '';
+    commText.textContent = meta.desc;
+    if (!GOOD_CLASSES.includes(last.cls) && last.bestSan && last.bestSan !== last.san) {
+      commBest.append('Daha iyisi: ');
+      const b = document.createElement('b');
+      b.textContent = last.bestSan;
+      commBest.appendChild(b);
+    }
+  }
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'link-btn variation-back';
+  back.textContent = 'Ana partiye dön';
+  back.addEventListener('click', () => { const base = variation.basePly; exitVariation(); goToPly(base); });
+  commBest.append(commBest.childNodes.length ? ' · ' : '', back);
+
+  plyLabel.textContent = `Deneme: ${n} hamle`;
+  firstBtn.disabled = prevBtn.disabled = false;
+  nextBtn.disabled = true;
+  lastBtn.disabled = false;
+  const prevActive = moveListEl.querySelector('.move-chip.active');
+  if (prevActive) prevActive.classList.remove('active');
+}
+function moveNumberFromFen(fen) {
+  const parts = fen.split(' ');
+  return parts[1] === 'w' ? `${parts[5]}.` : `${parts[5]}...`;
+}
+function renderCurrent(opts = {}) {
+  if (variation && variation.moves.length) renderVariation(opts);
+  else goToPly(currentPly, opts);
+}
+
+// --- Taş seçme ve sürükleme ---
+function clearSelection() {
+  selectedSq = null;
+  boardEl.querySelectorAll('.sq-selected, .sq-target, .sq-capture').forEach(el => el.classList.remove('sq-selected', 'sq-target', 'sq-capture'));
+}
+function selectSquare(sq) {
+  clearSelection();
+  const g = new Chess(currentFen());
+  const piece = g.get(sq);
+  if (!piece || piece.color !== g.turn()) return false;
+  const targets = g.moves({ square: sq, verbose: true });
+  if (!targets.length) return false;
+  selectedSq = sq;
+  boardEl.querySelector(`.sq[data-sq="${sq}"]`).classList.add('sq-selected');
+  for (const t of targets) {
+    const el = boardEl.querySelector(`.sq[data-sq="${t.to}"]`);
+    if (el) el.classList.add(t.captured ? 'sq-capture' : 'sq-target');
+  }
+  return true;
+}
+
+let drag = null;
+boardEl.addEventListener('pointerdown', (e) => {
+  if (!state || e.button > 0) return;
+  const sqEl = e.target.closest('.sq');
+  if (!sqEl) return;
+  Sound.ensure();
+  const sq = sqEl.dataset.sq;
+  // Seçili taş varken hedef kareye tıklandı
+  if (selectedSq && sq !== selectedSq && (sqEl.classList.contains('sq-target') || sqEl.classList.contains('sq-capture'))) {
+    playUserMove(selectedSq, sq, false);
+    e.preventDefault();
+    return;
+  }
+  if (!selectSquare(sq)) { clearSelection(); return; }
+  const pieceEl = sqEl.querySelector('.piece-graphic');
+  drag = { from: sq, pieceEl, startX: e.clientX, startY: e.clientY, ghost: null, pointerId: e.pointerId };
+  boardEl.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+boardEl.addEventListener('pointermove', (e) => {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  const dist = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+  if (!drag.ghost && dist > 4 && drag.pieceEl) {
+    const size = boardEl.clientWidth / 8;
+    const ghost = drag.pieceEl.cloneNode(true);
+    ghost.classList.add('piece-dragging');
+    ghost.style.width = ghost.style.height = size + 'px';
+    document.body.appendChild(ghost);
+    drag.pieceEl.style.opacity = '0.25';
+    drag.ghost = ghost;
+    drag.size = size;
+  }
+  if (drag.ghost) {
+    drag.ghost.style.left = (e.clientX - drag.size / 2) + 'px';
+    drag.ghost.style.top = (e.clientY - drag.size / 2) + 'px';
+  }
+});
+function endDrag(e, cancel) {
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  if (!d.ghost) return; // sürükleme değil, tıklama: seçim açık kalır
+  d.ghost.remove();
+  if (d.pieceEl) d.pieceEl.style.opacity = '';
+  if (cancel) { clearSelection(); return; }
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  const sqEl = target && target.closest && target.closest('#board .sq');
+  if (sqEl && sqEl.dataset.sq !== d.from && playUserMove(d.from, sqEl.dataset.sq, true)) return;
+  clearSelection();
+}
+boardEl.addEventListener('pointerup', (e) => endDrag(e, false));
+boardEl.addEventListener('pointercancel', (e) => endDrag(e, true));
+
+
+
 firstBtn.addEventListener('click', () => navigate(0));
-prevBtn.addEventListener('click', () => navigate(currentPly - 1));
-nextBtn.addEventListener('click', () => navigate(currentPly + 1));
+prevBtn.addEventListener('click', stepBack);
+nextBtn.addEventListener('click', stepForward);
 lastBtn.addEventListener('click', () => navigate(state.fens.length - 1));
 flipBtn.addEventListener('click', flipBoard);
 document.addEventListener('keydown', (e) => {
   if (!state) return;
   if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-  if (e.key === 'ArrowLeft') { navigate(currentPly - 1); e.preventDefault(); }
-  else if (e.key === 'ArrowRight') { navigate(currentPly + 1); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { stepBack(); e.preventDefault(); }
+  else if (e.key === 'ArrowRight') { stepForward(); e.preventDefault(); }
+  else if (e.key === ' ') { if (autoplayTimer) stopAutoplay(); else startAutoplay(); e.preventDefault(); }
+  else if (e.key === 'm' || e.key === 'M') toggleSound();
+  else if (e.key === 'Escape') clearSelection();
   else if (e.key === 'Home') { navigate(0); e.preventDefault(); }
   else if (e.key === 'End') { navigate(state.fens.length - 1); e.preventDefault(); }
   else if (e.key === 'f' || e.key === 'F') flipBoard();
@@ -1643,6 +2074,9 @@ document.getElementById('downloadPgnBtn').addEventListener('click', () => {
 });
 
 document.getElementById('backToSetupBtn').addEventListener('click', () => {
+  stopAutoplay();
+  exitVariation();
+  analysisCache.clear();
   reviewLayout.classList.remove('active');
   setupView.classList.remove('is-hidden');
   state = null;
