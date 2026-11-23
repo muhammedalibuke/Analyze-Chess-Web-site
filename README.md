@@ -84,6 +84,8 @@ Küçük farklar, değerlendirmelerin farklı motorlardan/derinliklerden gelmesi
 ## Güncelleme yaparken
 
 `index.html` içindeki `style.css?v=…` ve `script.js?v=…` numaralarını her sürümde bir artırın.
+Sayfa açılınca sunucudaki `index.html`'i kontrol eder; numara daha yüksekse kendini `?v=N` ekiyle
+yeniden açar, böylece tarayıcı önbelleğindeki eski sayfa kendiliğinden yenilenir.
 Aksi halde tarayıcı/CDN önbelleği yeni sayfayı eski stil dosyasıyla birleştirip sayfayı bozuk
 gösterebilir. Taş görselleri `Chess/pieces/` klasöründedir.
 
