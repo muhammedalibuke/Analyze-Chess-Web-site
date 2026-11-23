@@ -2625,3 +2625,24 @@ document.addEventListener('visibilitychange', () => (document.hidden ? stopDemo(
 previewBoardBtn && previewBoardBtn.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); previewBoardBtn.click(); }
 });
+
+// =========================================================
+// OTOMATİK GÜNCELLEME: tarayıcı önbellekteki eski sayfayı gösteriyorsa yenisine geç.
+// Bu dosya index.html'de "script.js?v=N" olarak yüklenir. Sunucudaki index.html daha yüksek
+// bir N gösteriyorsa sayfa "?v=N" ekiyle yeniden açılır; yeni adres önbelleğe takılmaz.
+// =========================================================
+(async function checkForNewVersion() {
+  try {
+    const mine = parseInt(new URL(import.meta.url).searchParams.get('v') || '0', 10);
+    const r = await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/script\.js\?v=(\d+)/);
+    const latest = m ? parseInt(m[1], 10) : 0;
+    if (latest > mine) {
+      const key = 'satranc-surum-yenilendi-' + latest;
+      if (sessionStorage.getItem(key)) return; // döngüye girmesin
+      sessionStorage.setItem(key, '1');
+      location.replace(location.pathname + '?v=' + latest + location.hash);
+    }
+  } catch (e) { /* çevrimdışı ya da depolama kapalı: sessizce devam */ }
+})();
