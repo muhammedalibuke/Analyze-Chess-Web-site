@@ -1,18 +1,28 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@0.13.4/chess.js';
-// Hamle sınıfları: etiket, simge (satranç notasyonundaki !!, !, ?, ?? işaretleri), renk ve açıklama.
-// Renkler style.css'teki --genius, --sharp ... değişkenleriyle aynıdır.
+// Hamle sınıfları — Chess.com'un sistemi (Türkçe adlarıyla). Eşikler "beklenen puan" kaybına
+// göredir: hamleyi yapanın kazanma beklentisi (0–1) en iyi hamleye göre ne kadar düştü?
+//   En iyi 0 · Mükemmel 0–0.02 · İyi 0.02–0.05 · Yanlışlık 0.05–0.10 · Hata 0.10–0.20 · Büyük hata 0.20+
+// Harika (!!) = iyi bir taş fedası; Çok iyi (!) = tek iyi hamle; Kaçırılan = rakibin hatasını cezalandıramamak.
 const BOOK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 3h12a1 1 0 0 1 1 1v13H7a1 1 0 1 0 0 2h12v2H7a3 3 0 0 1-3-3V5a2 2 0 0 1 2-2Z"/></svg>';
+const THUMB_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-thumb"/></svg>';
 const CLASS_META = {
-  genius:   { label: 'Parlak hamle',   symbol: '!!', color: '#2BD9E8', desc: 'Bulunması zor, fedakârlık içeren ve tek doğru olan hamle.' },
-  sharp:    { label: 'Keskin hamle',   symbol: '!',  color: '#5C9BF5', desc: 'Tek iyi devam buydu; diğer hamleler avantajı kaçırırdı.' },
-  optimum:  { label: 'En iyi hamle',   symbol: '★',  color: '#3DBE7A', desc: 'Motorun önerisiyle aynı ya da ona çok yakın, güçlü bir seçim.' },
-  optimum2: { label: 'İyi hamle',      symbol: '✓',  color: '#93B85A', desc: 'Konumu bozmayan makul bir hamle; daha güçlü bir alternatif vardı.' },
-  book:     { label: 'Açılış teorisi', symbol: '',   symbolHtml: BOOK_ICON, color: '#B08D5E', desc: 'Bilinen açılış teorisinde yer alan bir hamle.' },
-  flaw:     { label: 'Hatalı hamle',   symbol: '?',  color: '#F0B03F', desc: 'Bu hamle avantajın bir kısmını kaybettirdi.' },
-  fatal:    { label: 'Ciddi hata',     symbol: '??', color: '#EE5A52', desc: 'Bu hamle pozisyonu ciddi şekilde kötüleştirdi.' },
-  unknown:  { label: 'Analiz yok',     symbol: '–',  color: '#6B7588', desc: 'Bu pozisyon için analiz verisi alınamadı (ağ hatası olabilir).' }
+  brilliant:  { label: 'Harika',          symbol: '!!', color: '#26C2A3', desc: 'İyi bir taş fedası: taş veriyorsun ama pozisyon daha iyi hale geliyor.' },
+  great:      { label: 'Çok iyi',         symbol: '!',  color: '#749BBF', desc: 'Tek iyi hamle buydu; diğer hamleler pozisyonu belirgin şekilde kötüleştirirdi.' },
+  book:       { label: 'Kitap',           symbol: '',   symbolHtml: BOOK_ICON, color: '#A88865', desc: 'Bilinen açılış teorisinde yer alan bir hamle.' },
+  best:       { label: 'En iyi',          symbol: '★',  color: '#81B64C', desc: 'Motorun önerdiği en iyi hamle.' },
+  excellent:  { label: 'Mükemmel',        symbol: '',   symbolHtml: THUMB_ICON, color: '#96BC4B', desc: 'En iyi hamleye çok yakın; kazanma şansın neredeyse hiç düşmedi.' },
+  good:       { label: 'İyi',             symbol: '✓',  color: '#95B776', desc: 'Sağlam bir hamle, ama daha güçlü bir seçenek vardı.' },
+  inaccuracy: { label: 'Yanlışlık',       symbol: '?!', color: '#F7C631', desc: 'Pozisyonunu biraz kötüleştiren bir hamle.' },
+  mistake:    { label: 'Hata',            symbol: '?',  color: '#FFA459', desc: 'Pozisyonunu kötüleştiren bir hamle.' },
+  miss:       { label: 'Kaçırılan hamle', symbol: '✕',  color: '#FF7769', desc: 'Rakibin hatasını cezalandırma fırsatını kaçırdın.' },
+  blunder:    { label: 'Büyük hata',      symbol: '??', color: '#FA412D', desc: 'Pozisyonunu ciddi şekilde kötüleştiren bir hamle.' },
+  unknown:    { label: 'Analiz yok',      symbol: '–',  color: '#6B7588', desc: 'Bu pozisyon için analiz verisi alınamadı (ağ hatası olabilir).' }
 };
-const CLASS_ORDER = ['genius', 'sharp', 'optimum', 'optimum2', 'book', 'flaw', 'fatal'];
+const CLASS_ORDER = ['brilliant', 'great', 'book', 'best', 'excellent', 'good', 'inaccuracy', 'mistake', 'miss', 'blunder'];
+// Hamle listesinde simgesi gösterilmeyen (sessiz) sınıflar
+const QUIET_CLASSES = ['best', 'excellent', 'good'];
+// "İyi" sayılan sınıflar: bunlarda "Daha iyisi" önerisi ve ok gösterilmez
+const GOOD_CLASSES = ['brilliant', 'great', 'book', 'best'];
 const FALLBACK_DEPTH = 13;
 const pgnInput = document.getElementById('pgnInput');
 const commentaryCard = document.getElementById('commentaryCard');
@@ -393,7 +403,8 @@ const OPENINGS_FILES = ['a.tsv', 'b.tsv', 'c.tsv', 'd.tsv', 'e.tsv'];
 // Veritabanında adı geçen ama motorun kötü bulduğu açılışlar da var (ör. 2.Qh5 "Parham Attack",
 // 2.Ke2 "Bongcloud"). Bu yüzden kitaptaki bir hamle ancak en fazla bu kadar kaybettiriyorsa
 // "Açılış Teorisi" sayılır; daha pahalıysa normal sınıflandırılır (Hatalı / Ciddi Hata vb.).
-const BOOK_MAX_LOSS = 80;
+const BOOK_MAX_LOSS = 80; // (eski, santipiyon)
+const BOOK_MAX_EP_LOSS = 0.07; // kitap hamlesi en fazla bu kadar beklenen puan kaybettirebilir
 const SAMPLE_PGN = `[Event "Opera Game"]
 [White "Paul Morphy"]
 [Black "Duke of Brunswick & Count Isouard"]
@@ -801,32 +812,53 @@ function moveAccuracy(winBefore, winAfter) {
   return Math.max(0, Math.min(100, raw + 1)); // +1: analizdeki belirsizlik payı (Lichess'te de var)
 }
 
-function isSacrifice(move) {
-  if (!move.captured) return false;
-  const movingVal = PIECE_VALUE[move.piece] || 0;
-  const capturedVal = PIECE_VALUE[move.captured] || 0;
-  return (movingVal - capturedVal) >= 2;
+// Beklenen puan (0–1): hamleyi yapanın bakış açısından santipiyondan kazanma beklentisi
+function expectedPoints(cp) {
+  return cpToWinPercent(cp) / 100;
 }
 
-function classifyMove({ loss, gapBefore, isBest, sac, isBook }) {
-  // [DÜZELTME #5] Eskiden "ilk 8 hamlede 100 cp'den az kaybettiren her hamle" kitap
-  // sayılıyordu (1.e4 e5 2.Qh5 bile). Artık yalnızca hamle sonrası pozisyon gerçek
-  // açılış veritabanında varsa 'book' veriliyor.
-  if (isBook) {
-    return 'book';
-  }
-
-  if (loss <= 15) {
-    if (isBest && sac && gapBefore !== null && gapBefore >= CRITICAL_GAP) return 'genius';
-    if (isBest && gapBefore !== null && gapBefore >= CRITICAL_GAP) return 'sharp';
-    return 'optimum';
-  }
-  if (loss <= 40) return 'optimum';
-  if (loss <= 95) return 'optimum2';
-  if (loss <= 190) return 'flaw';
-  return 'fatal';
+// Gerçek taş fedası mı? Hamleden sonra rakip, oynanan taşı alabiliyorsa ve takas sonunda
+// en az ~2 puanlık malzeme kaybediyorsak fedadır. (Eskiden "yeme hamlesi + değer farkı"na
+// bakılıyordu; neredeyse her yeme hamlesi feda sayılıp gereksiz "!!" veriliyordu.)
+function isPieceSacrifice(fenBefore, mv) {
+  if (mv.piece === 'p' || mv.piece === 'k' || mv.promotion) return false;
+  const val = PIECE_VALUE[mv.piece];
+  const gained = mv.captured ? PIECE_VALUE[mv.captured] : 0;
+  const g = new Chess(fenBefore);
+  if (!g.move(mv.san)) return false;
+  if (g.in_checkmate()) return false;
+  const caps = g.moves({ verbose: true }).filter(m => m.to === mv.to && m.captured);
+  if (caps.length === 0) return false;
+  // Rakip en ucuz taşıyla alır (şah ancak kare korumasızsa alabilir)
+  caps.sort((x, y) => (x.piece === 'k' ? 99 : PIECE_VALUE[x.piece]) - (y.piece === 'k' ? 99 : PIECE_VALUE[y.piece]));
+  const taker = caps[0];
+  g.move(taker.san);
+  const canRecapture = g.moves({ verbose: true }).some(m => m.to === mv.to && m.captured);
+  const takerVal = taker.piece === 'k' ? 0 : PIECE_VALUE[taker.piece];
+  const net = gained - val + (canRecapture ? takerVal : 0);
+  return net <= -2;
 }
 
+function classifyMove({ epLoss, epBefore, epAfter, isBest, gapEp, sac, legalCount, isRecapture, prevOppCls, ourEpBeforeOppMove }) {
+  // Harika (!!): en iyi ya da neredeyse en iyi hamleyle yapılan iyi bir taş fedası;
+  // zaten tamamen kazanılmış bir pozisyonda değil ve fedadan sonra pozisyon iyi.
+  if (sac && epLoss <= 0.02 && epBefore < 0.95 && epAfter >= 0.5) return 'brilliant';
+  // Çok iyi (!): tek iyi hamle — ikinci en iyi hamle beklentiyi en az 0.15 düşürürdü.
+  // Zorunlu hamleler, basit geri almalar ve zaten tamamen kazanılmış pozisyonlar sayılmaz.
+  if (isBest && gapEp !== null && gapEp >= 0.15 && legalCount > 1 && !isRecapture && epBefore < 0.95 && epAfter >= 0.35) return 'great';
+  // Kaçırılan hamle: rakip az önce hata yaptı, sen bunu cezalandıramadın ve
+  // rakibin hatasından önceki durumdan daha iyi bir yere gelemedin.
+  if ((prevOppCls === 'mistake' || prevOppCls === 'blunder') && epLoss >= 0.10 &&
+      ourEpBeforeOppMove !== null && epAfter <= ourEpBeforeOppMove + 0.05 && epAfter >= ourEpBeforeOppMove - 0.10) {
+    return 'miss';
+  }
+  if (isBest || epLoss <= 0.0005) return 'best';
+  if (epLoss < 0.02) return 'excellent';
+  if (epLoss < 0.05) return 'good';
+  if (epLoss < 0.10) return 'inaccuracy';
+  if (epLoss < 0.20) return 'mistake';
+  return 'blunder';
+}
 
 // Oyun doğruluğu — Lichess'in yöntemi:
 //  1) Her hamle için doğruluk (moveAccuracy).
@@ -990,27 +1022,32 @@ async function runAnalysis() {
             const playedCp = analysisMissing ? null : clampEval(playedCpRaw);
             const cpLoss = analysisMissing ? 0 : Math.max(0, bestCp - playedCp);
 
-            // [DÜZELTME #3] En iyi ve ikinci en iyi hamle arasındaki fark ("tek hamle" mi?).
-            // Artık bulut kaynakları da score2 döndürdüğü için bu değer gerçekten hesaplanıyor.
-            let gapBefore = null;
+            // Beklenen puanlar (hamleyi yapanın bakış açısından, 0–1)
+            const epBefore = analysisMissing ? null : expectedPoints(bestCp);
+            const epAfter = analysisMissing ? null : expectedPoints(playedCp);
+            const epLoss = analysisMissing ? 0 : Math.max(0, epBefore - epAfter);
+
+            // En iyi ve ikinci en iyi hamle arasındaki fark ("tek iyi hamle" mi?)
+            let gapEp = null;
             if (!analysisMissing && res.score && res.score2) {
-                gapBefore = Math.abs(clampEval(scoreForSideToMove(res.score)) - clampEval(scoreForSideToMove(res.score2)));
+                gapEp = Math.max(0, expectedPoints(clampEval(scoreForSideToMove(res.score))) - expectedPoints(clampEval(scoreForSideToMove(res.score2))));
             }
+            const isBest = !analysisMissing && (playedUci === res.bestMoveUci || epLoss <= 0.0005);
 
-            // [DÜZELTME #3] "En iyi hamle mi?" artık motorun önerdiği hamleyle doğrudan
-            // karşılaştırılıyor (eskiden sadece cpLoss <= 10'a bakılıyordu).
-            const isBest = !analysisMissing && (playedUci === res.bestMoveUci || cpLoss <= 5);
-
-            // [DÜZELTME #5] Hamle sonrası pozisyon açılış veritabanında mı?
             const inOpeningDb = !!openingDb && openingDb.positions.has(positionKey(fens[i + 1]));
-            const isBook = inOpeningDb && (analysisMissing || cpLoss <= BOOK_MAX_LOSS);
+            const isBook = inOpeningDb && (analysisMissing || epLoss <= BOOK_MAX_EP_LOSS);
 
-            const cls = isBook ? 'book' : analysisMissing ? 'unknown' : classifyMove({ 
-              loss: cpLoss, 
-              gapBefore: gapBefore, 
-              isBest, 
-              sac: isSacrifice(mv),
-              isBook
+            const prev = perMove[i - 1];
+            const legalCount = new Chess(fens[i]).moves().length;
+            const isRecapture = !!(prev && mv.captured && parsed.moves[i - 1].captured && parsed.moves[i - 1].to === mv.to);
+            const ourEpBeforeOppMove = prev && prev.epBefore !== null && prev.epBefore !== undefined ? 1 - prev.epBefore : null;
+
+            const cls = isBook ? 'book' : analysisMissing ? 'unknown' : classifyMove({
+              epLoss, epBefore, epAfter, isBest, gapEp,
+              sac: isBest || epLoss <= 0.02 ? isPieceSacrifice(fens[i], mv) : false,
+              legalCount, isRecapture,
+              prevOppCls: prev ? prev.cls : null,
+              ourEpBeforeOppMove
             });
 
             perMove.push({ 
@@ -1025,7 +1062,8 @@ async function runAnalysis() {
               evalAfter: evals[i + 1], // Hamle yapıldıktan sonraki tahta değerlendirmesi (Beyaz'a göre)
               bestCp,                  // Doğruluk hesabı için: en iyi hamlenin puanı (hamleyi yapana göre)
               playedCp,                // Doğruluk hesabı için: oynanan hamlenin puanı (hamleyi yapana göre)
-              source: res ? res.source : null
+              source: res ? res.source : null,
+              epBefore, epAfter
             });
         }
 
@@ -1115,7 +1153,7 @@ function renderPreviewBoard() {
       div.className = 'sq ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
       if (sq === 'd1' || sq === 'd7') {
         div.classList.add(sq === 'd7' ? 'hl-to' : 'hl-from');
-        div.style.setProperty('--hl-color', CLASS_META.genius.color);
+        div.style.setProperty('--hl-color', CLASS_META.great.color);
       }
       const p = board[r][c];
       if (p) {
@@ -1123,7 +1161,7 @@ function renderPreviewBoard() {
         g.className = `piece-graphic ${p.type}-${p.color}`;
         div.appendChild(g);
       }
-      if (sq === 'd7') div.appendChild(makeBadge('genius', 'board-badge'));
+      if (sq === 'd7') div.appendChild(makeBadge('great', 'board-badge'));
       el.appendChild(div);
     }
   }
@@ -1190,37 +1228,29 @@ function renderPlayers() {
 }
 
 // Doğruluk + hangi sınıftan kaç hamle
-// Özet tablosu: oyuncu başına doğruluk ve her sınıftan kaç hamle (sütun başlıkları sınıf simgeleri)
+// Özet tablosu (Chess.com gibi): her sınıf bir satır — Beyaz sayısı, simge, Siyah sayısı
 function renderAccuracy() {
   const acc = state.accuracies;
-  whiteAccEl.textContent = acc.white !== null ? '%' + acc.white.toFixed(1) : '—';
-  blackAccEl.textContent = acc.black !== null ? '%' + acc.black.toFixed(1) : '—';
+  whiteAccEl.textContent = acc.white !== null ? acc.white.toFixed(1) : '—';
+  blackAccEl.textContent = acc.black !== null ? acc.black.toFixed(1) : '—';
   document.getElementById('accWhiteName').textContent = playerName('w');
   document.getElementById('accBlackName').textContent = playerName('b');
-
-  const head = document.getElementById('summaryHead');
-  head.querySelectorAll('.sum-cls-h').forEach(el => el.remove());
-  for (const cls of CLASS_ORDER) {
-    const th = document.createElement('th');
-    th.scope = 'col';
-    th.className = 'sum-cls-h';
-    th.appendChild(makeBadge(cls));
-    head.appendChild(th);
-  }
   const counts = { w: {}, b: {} };
   for (const m of state.perMove) counts[m.color][m.cls] = (counts[m.color][m.cls] || 0) + 1;
-  for (const [rowId, c] of [['sumRowW', 'w'], ['sumRowB', 'b']]) {
-    const row = document.getElementById(rowId);
-    row.querySelectorAll('.sum-count').forEach(el => el.remove());
-    for (const cls of CLASS_ORDER) {
-      const td = document.createElement('td');
-      const n = counts[c][cls] || 0;
-      td.className = 'sum-count' + (n > 0 ? ' has' : '');
-      td.textContent = n;
-      td.title = `${playerName(c)}: ${n} × ${CLASS_META[cls].label.toLowerCase()}`;
-      if (n > 0) td.style.setProperty('--cls', CLASS_META[cls].color);
-      row.appendChild(td);
-    }
+  const body = document.getElementById('classRows');
+  body.innerHTML = '';
+  for (const cls of CLASS_ORDER) {
+    const meta = CLASS_META[cls];
+    const tr = document.createElement('tr');
+    tr.style.setProperty('--cls', meta.color);
+    const th = document.createElement('th');
+    th.scope = 'row';
+    th.textContent = meta.label;
+    const tw = document.createElement('td'); tw.className = 'sum-count'; tw.textContent = counts.w[cls] || 0;
+    const ti = document.createElement('td'); ti.className = 'sum-icon'; ti.appendChild(makeBadge(cls));
+    const tb = document.createElement('td'); tb.className = 'sum-count'; tb.textContent = counts.b[cls] || 0;
+    tr.append(th, tw, ti, tb);
+    body.appendChild(tr);
   }
 }
 
@@ -1248,13 +1278,13 @@ function renderMoveList() {
         san.textContent = mv.san;
         chip.appendChild(san);
         // Liste kalabalık olmasın diye "en iyi" ve "iyi" hamlelerde simge gösterilmez
-        if (!['optimum', 'optimum2'].includes(mv.cls)) {
+        if (!QUIET_CLASSES.includes(mv.cls)) {
           const sym = document.createElement('span');
           sym.className = 'mv-sym';
           if (meta.symbolHtml) sym.innerHTML = meta.symbolHtml; else sym.textContent = meta.symbol;
           chip.appendChild(sym);
         }
-        chip.addEventListener('click', () => goToPly(idx + 1));
+        chip.addEventListener('click', () => navigate(idx + 1));
       } else {
         chip.tabIndex = -1;
       }
@@ -1275,6 +1305,26 @@ function updatePerspectiveFromSelect() {
 colorSelect.addEventListener('change', updatePerspectiveFromSelect);
 updatePerspectiveFromSelect();
 
+// Sağ paneldeki "Özet" / "Hamleler" sekmeleri
+const panelTabs = [...document.querySelectorAll('.panel-tab')];
+function showPanel(id) {
+  for (const t of panelTabs) {
+    const on = t.dataset.panel === id;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+    document.getElementById(t.dataset.panel).classList.toggle('active', on);
+  }
+  if (id === 'panelSummary') renderEvalGraph();
+  if (id === 'panelMoves') { const a = moveListEl.querySelector('.move-chip.active'); if (a) scrollChipIntoView(a); }
+}
+for (const t of panelTabs) t.addEventListener('click', () => showPanel(t.dataset.panel));
+// Kullanıcı hamleler arasında gezinince hamle görünümüne geç
+function navigate(ply) {
+  if (!document.getElementById('panelMoves').classList.contains('active')) showPanel('panelMoves');
+  goToPly(ply);
+}
+document.getElementById('startReviewBtn').addEventListener('click', () => navigate(1));
+
 function showReview() {
   state.accuracies = computeAccuracies();
   setupView.classList.add('is-hidden');
@@ -1283,6 +1333,7 @@ function showReview() {
   renderMoveList();
   renderAccuracy();
   renderPlayers();
+  showPanel('panelSummary');
   goToPly(currentPly);
   syncAnalysisHeight();
   window.scrollTo(0, 0);
@@ -1323,6 +1374,19 @@ function renderBoard(fen, move) {
         div.appendChild(graphic);
       }
       if (move && sqName === move.to) div.appendChild(makeBadge(move.cls, 'board-badge'));
+      // Koordinatlar karelerin içinde (Chess.com gibi): sol sütunda rakam, alt satırda harf
+      if (visCol === 0) {
+        const rk = document.createElement('span');
+        rk.className = 'coord coord-rank';
+        rk.textContent = 8 - row;
+        div.appendChild(rk);
+      }
+      if (visRow === 7) {
+        const fl = document.createElement('span');
+        fl.className = 'coord coord-file';
+        fl.textContent = String.fromCharCode(97 + col);
+        div.appendChild(fl);
+      }
       boardEl.appendChild(div);
     }
   }
@@ -1330,6 +1394,7 @@ function renderBoard(fen, move) {
 }
 
 function renderCoordLabels() {
+  if (!coordsTop) return; // koordinatlar artık karelerin içinde çiziliyor
   const files = [], ranks = [];
   for (let v = 0; v < 8; v++) {
     files.push(String.fromCharCode(97 + (boardFlipped ? 7 - v : v)));
@@ -1355,20 +1420,34 @@ function drawArrow(fromSq, toSq, color) {
   arrowOverlay.innerHTML = '';
   if (!fromSq || !toSq) return;
   const p1 = squareToXY(fromSq), p2 = squareToXY(toSq);
-  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const dxSq = Math.abs(fileIndex(toSq) - fileIndex(fromSq));
+  const dySq = Math.abs(rankIndexFromTop(toSq) - rankIndexFromTop(fromSq));
+  // At hamlesi: ok "L" şeklinde (önce uzun kol, sonra kısa kol), Chess.com'daki gibi
+  const isKnight = (dxSq === 1 && dySq === 2) || (dxSq === 2 && dySq === 1);
+  let corner = null;
+  if (isKnight) corner = dySq === 2 ? { x: p1.x, y: p2.y } : { x: p2.x, y: p1.y };
+  const last = corner || p1;
+  const dx = p2.x - last.x, dy = p2.y - last.y;
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len, uy = dy / len;
   const head = 20, half = 13, tipInset = 6;
   const tipX = p2.x - ux * tipInset, tipY = p2.y - uy * tipInset;
   const baseX = tipX - ux * head, baseY = tipY - uy * head;
-  const startX = p1.x + ux * 8, startY = p1.y + uy * 8;
+  let start = p1;
+  if (!corner) {
+    start = { x: p1.x + ux * 8, y: p1.y + uy * 8 };
+  } else {
+    const fx = corner.x - p1.x, fy = corner.y - p1.y, fl = Math.hypot(fx, fy) || 1;
+    start = { x: p1.x + (fx / fl) * 8, y: p1.y + (fy / fl) * 8 };
+  }
   const g = document.createElementNS(SVG_NS, 'g');
   g.setAttribute('opacity', '0.85');
-  const line = document.createElementNS(SVG_NS, 'line');
-  line.setAttribute('x1', startX); line.setAttribute('y1', startY);
-  line.setAttribute('x2', baseX); line.setAttribute('y2', baseY);
-  line.setAttribute('stroke', color); line.setAttribute('stroke-width', '10');
-  line.setAttribute('stroke-linecap', 'round');
+  const path = document.createElementNS(SVG_NS, 'polyline');
+  const pts = corner ? [start, corner, { x: baseX, y: baseY }] : [start, { x: baseX, y: baseY }];
+  path.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', color); path.setAttribute('stroke-width', '10');
+  path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
   const poly = document.createElementNS(SVG_NS, 'polygon');
   poly.setAttribute('points', [
     `${tipX},${tipY}`,
@@ -1376,7 +1455,7 @@ function drawArrow(fromSq, toSq, color) {
     `${baseX + uy * half},${baseY - ux * half}`
   ].join(' '));
   poly.setAttribute('fill', color);
-  g.append(line, poly);
+  g.append(path, poly);
   arrowOverlay.appendChild(g);
 }
 
@@ -1420,7 +1499,7 @@ function renderEvalGraph() {
   let d = `M0,${H} `;
   for (let i = 0; i < n; i++) d += `L${x(i).toFixed(1)},${y(i).toFixed(1)} `;
   d += `L${W},${H} Z`;
-  const dots = state.perMove.map((m, i) => (m.cls === 'fatal' || m.cls === 'flaw' || m.cls === 'genius')
+  const dots = state.perMove.map((m, i) => ['blunder', 'mistake', 'miss', 'brilliant', 'great'].includes(m.cls)
     ? `<circle class="g-dot" cx="${x(i + 1).toFixed(1)}" cy="${y(i + 1).toFixed(1)}" r="4" fill="${CLASS_META[m.cls].color}"><title>${Math.ceil((i + 1) / 2)}${m.color === 'w' ? '.' : '...'} ${m.san}: ${CLASS_META[m.cls].label}</title></circle>`
     : '').join('');
   evalGraphEl.innerHTML =
@@ -1434,7 +1513,7 @@ evalGraphEl.addEventListener('click', (e) => {
   if (!state) return;
   const rect = evalGraphEl.getBoundingClientRect();
   const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-  goToPly(Math.round(ratio * (state.fens.length - 1)));
+  navigate(Math.round(ratio * (state.fens.length - 1)));
 });
 
 function moveNumberLabel(ply, color) {
@@ -1464,7 +1543,7 @@ function updateCommentary(move, ply) {
     : '';
   commTitle.textContent = `${moveNumberLabel(ply, move.color)} ${move.san}`;
   commText.textContent = meta.desc;
-  const isGood = ['optimum', 'genius', 'sharp', 'book'].includes(move.cls);
+  const isGood = GOOD_CLASSES.includes(move.cls);
   if (!isGood && move.bestSan && move.bestSan !== move.san) {
     commBest.append('Daha iyisi: ');
     const b = document.createElement('b');
@@ -1496,10 +1575,10 @@ function goToPly(ply) {
     plyLabel.textContent = 'Başlangıç konumu';
   } else {
     plyLabel.textContent = `${moveNumberLabel(currentPly, move.color)} ${move.san}`;
-    const isGood = ['optimum', 'genius', 'sharp', 'book'].includes(move.cls);
+    const isGood = GOOD_CLASSES.includes(move.cls);
     if (!isGood && move.bestSan && move.bestSan !== move.san) {
       const best = new Chess(state.fens[currentPly - 1]).moves({ verbose: true }).find(mv => mv.san === move.bestSan);
-      if (best) drawArrow(best.from, best.to, CLASS_META.optimum.color);
+      if (best) drawArrow(best.from, best.to, CLASS_META.best.color);
     }
   }
   firstBtn.disabled = prevBtn.disabled = currentPly === 0;
@@ -1510,14 +1589,19 @@ function goToPly(ply) {
   const activeChip = moveListEl.querySelector(`.move-chip[data-ply="${currentPly}"]`);
   if (activeChip) {
     activeChip.classList.add('active');
-    // Sadece listenin içini kaydır (sayfanın kendisini kaydırmadan)
-    const top = activeChip.offsetTop - moveListEl.offsetTop;
-    if (top < moveListEl.scrollTop) moveListEl.scrollTop = top - 8;
-    else if (top + activeChip.offsetHeight > moveListEl.scrollTop + moveListEl.clientHeight) {
-      moveListEl.scrollTop = top + activeChip.offsetHeight - moveListEl.clientHeight + 8;
-    }
+    scrollChipIntoView(activeChip);
   } else if (currentPly === 0) {
     moveListEl.scrollTop = 0;
+  }
+}
+
+// Sadece hamle listesinin içini kaydır (sayfanın kendisini kaydırmadan)
+function scrollChipIntoView(chip) {
+  if (!moveListEl.clientHeight) return;
+  const top = chip.offsetTop - moveListEl.offsetTop;
+  if (top < moveListEl.scrollTop) moveListEl.scrollTop = top - 8;
+  else if (top + chip.offsetHeight > moveListEl.scrollTop + moveListEl.clientHeight) {
+    moveListEl.scrollTop = top + chip.offsetHeight - moveListEl.clientHeight + 8;
   }
 }
 
@@ -1527,18 +1611,18 @@ function flipBoard() {
   goToPly(currentPly);
 }
 
-firstBtn.addEventListener('click', () => goToPly(0));
-prevBtn.addEventListener('click', () => goToPly(currentPly - 1));
-nextBtn.addEventListener('click', () => goToPly(currentPly + 1));
-lastBtn.addEventListener('click', () => goToPly(state.fens.length - 1));
+firstBtn.addEventListener('click', () => navigate(0));
+prevBtn.addEventListener('click', () => navigate(currentPly - 1));
+nextBtn.addEventListener('click', () => navigate(currentPly + 1));
+lastBtn.addEventListener('click', () => navigate(state.fens.length - 1));
 flipBtn.addEventListener('click', flipBoard);
 document.addEventListener('keydown', (e) => {
   if (!state) return;
   if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-  if (e.key === 'ArrowLeft') { goToPly(currentPly - 1); e.preventDefault(); }
-  else if (e.key === 'ArrowRight') { goToPly(currentPly + 1); e.preventDefault(); }
-  else if (e.key === 'Home') { goToPly(0); e.preventDefault(); }
-  else if (e.key === 'End') { goToPly(state.fens.length - 1); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { navigate(currentPly - 1); e.preventDefault(); }
+  else if (e.key === 'ArrowRight') { navigate(currentPly + 1); e.preventDefault(); }
+  else if (e.key === 'Home') { navigate(0); e.preventDefault(); }
+  else if (e.key === 'End') { navigate(state.fens.length - 1); e.preventDefault(); }
   else if (e.key === 'f' || e.key === 'F') flipBoard();
 });
 analyzeBtn.addEventListener('click', runAnalysis);
